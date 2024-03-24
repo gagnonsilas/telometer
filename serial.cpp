@@ -16,6 +16,8 @@ int next_packet = 0;
 
 int serial;
 
+bool log;
+
 struct pollfd poll_struct;
 
 
@@ -34,8 +36,10 @@ void update_packet(packet_id id) {
   updated[id] = 1;
 }
 
-int serial_try_open() {
-  int rc = system("stty -F /dev/ttyACM0 raw speed 115200");
+int serial_try_open(const char* name = "romi") {
+  
+  
+  int rc = system("stty -F /dev/serial/by-id/* raw speed 115200 -echo -echoe -echok -echoctl -echoke");
 
   if(rc < 0) {
     return(-1);
