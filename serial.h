@@ -1,5 +1,4 @@
 #pragma once
-#include "lib/logger/log.h"
 
 packet read_next();
 
