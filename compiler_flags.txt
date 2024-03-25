@@ -1,4 +1,0 @@
--lSDL2
--Iimgui
--lGL
--Ilib/logger

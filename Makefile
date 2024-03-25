@@ -52,7 +52,7 @@ endif
 $(TARGET)/%.o:%.cpp %.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(TARGET)/%.o:%.cpp
+$(TARGET)/%.o:%.cpp lib/*/*.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(TARGET)/%.o:$(IMGUI_DIR)/%.cpp
@@ -70,7 +70,7 @@ $(TARGET)/%.o:$(IMGUI_DIR)/backends/%.cpp
 all: $(EXE)
 	@echo Build complete for $(ECHO_MESSAGE)
 
-$(EXE): $(OBJS) lib/*/*.h
+$(EXE): $(OBJS) 
 	$(CXX) -o $@ $(OBJS) $(CXXFLAGS) $(LIBS)
 
 clean:

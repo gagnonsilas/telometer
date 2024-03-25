@@ -19,7 +19,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "dashboard.o",
+   "target/dashboard.o",
    "dashboard.cpp"
   ],
   "file": "dashboard.cpp"
@@ -44,7 +44,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "serial.o",
+   "target/serial.o",
    "serial.cpp"
   ],
   "file": "serial.cpp"
@@ -69,7 +69,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "imgui.o",
+   "target/imgui.o",
    "imgui/imgui.cpp"
   ],
   "file": "imgui/imgui.cpp"
@@ -94,7 +94,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "imgui_demo.o",
+   "target/imgui_demo.o",
    "imgui/imgui_demo.cpp"
   ],
   "file": "imgui/imgui_demo.cpp"
@@ -119,7 +119,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "imgui_draw.o",
+   "target/imgui_draw.o",
    "imgui/imgui_draw.cpp"
   ],
   "file": "imgui/imgui_draw.cpp"
@@ -144,7 +144,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "imgui_tables.o",
+   "target/imgui_tables.o",
    "imgui/imgui_tables.cpp"
   ],
   "file": "imgui/imgui_tables.cpp"
@@ -169,7 +169,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "imgui_widgets.o",
+   "target/imgui_widgets.o",
    "imgui/imgui_widgets.cpp"
   ],
   "file": "imgui/imgui_widgets.cpp"
@@ -194,7 +194,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "implot.o",
+   "target/implot.o",
    "implot/implot.cpp"
   ],
   "file": "implot/implot.cpp"
@@ -219,7 +219,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "implot_items.o",
+   "target/implot_items.o",
    "implot/implot_items.cpp"
   ],
   "file": "implot/implot_items.cpp"
@@ -244,7 +244,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "imgui_impl_sdl2.o",
+   "target/imgui_impl_sdl2.o",
    "imgui/backends/imgui_impl_sdl2.cpp"
   ],
   "file": "imgui/backends/imgui_impl_sdl2.cpp"
@@ -269,7 +269,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "imgui_impl_opengl2.o",
+   "target/imgui_impl_opengl2.o",
    "imgui/backends/imgui_impl_opengl2.cpp"
   ],
   "file": "imgui/backends/imgui_impl_opengl2.cpp"
@@ -294,7 +294,7 @@
    "-D_REENTRANT",
    "-c",
    "-o",
-   "maths.o",
+   "target/maths.o",
    "lib/Math/maths.cpp"
   ],
   "file": "lib/Math/maths.cpp"
