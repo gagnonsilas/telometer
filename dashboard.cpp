@@ -261,6 +261,16 @@ void update() {
     create_plot(&testplot);
   }
 
+  if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Space))) {
+    telemetry::data_values[telemetry::robot_enabled]->int_packet = 0;
+    telemetry::send_packet(telemetry::robot_enabled);
+  }
+
+  if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter))) {
+    telemetry::data_values[telemetry::robot_enabled]->int_packet = !telemetry::data_values[telemetry::robot_enabled]->int_packet;
+    telemetry::send_packet(telemetry::robot_enabled);
+  }
+
   ImGui::End();
 
   plot_field("field");
