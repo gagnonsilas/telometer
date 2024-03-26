@@ -1,4 +1,4 @@
-#include "lib/Telemetry/telemetry.h"
+#include "telemetry.h"
 
 #include <bits/types/FILE.h>
 #include <stdio.h>
@@ -16,7 +16,6 @@ int next_packet = 0;
 
 int serial;
 
-bool log;
 
 struct pollfd poll_struct;
 
@@ -86,7 +85,7 @@ namespace telemetry {
     
       if(p.id < 0 || p.id >= packet_ids_count) {
         fprintf(stderr, "PACKETS MISALIGNED\n");
-        fprintf(stderr, "data: id-%d, x-%f, y-%f\n", p.id, p.value.vec2_packet.x, p.value.vec2_packet.y);
+        fprintf(stderr, "data: id-%d, x-%f, y-%f\n", p.id, p.value.vec2_float_packet.x, p.value.vec2_float_packet.y);
         end();
         serial_try_open();
         break;

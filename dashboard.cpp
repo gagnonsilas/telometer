@@ -2,8 +2,8 @@
 #include "implot/implot.h"
 #include "imgui/backends/imgui_impl_sdl2.h"
 #include "imgui/backends/imgui_impl_opengl2.h"
-#include "lib/Math/maths.h"
-#include "lib/Telemetry/telemetry.h"
+#include "maths.h"
+#include "telemetry.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 #include <cmath>
@@ -99,8 +99,8 @@ void create_plot(struct LivePlot *plot) {
             case telemetry::angle_packet:
               new_val = maths::getRadians(telemetry::data_values[i]->angle_packet);
               break;
-            case telemetry::vec2_packet:
-              new_val = telemetry::data_values[i]->vec2_packet.x;
+            case telemetry::vec2_float_packet:
+              new_val = telemetry::data_values[i]->vec2_float_packet.x;
               break;
             default:
              break;
@@ -148,7 +148,7 @@ bool inputFloatVector(const char* label, float* v, int len, const char labels[])
 }
 
 
-ImVec2 to_screen_coords(vec2 vec, ImVec2 start, ImVec2 size, float sf){
+ImVec2 to_screen_coords(vec2<float> vec, ImVec2 start, ImVec2 size, float sf){
   return {vec.x * sf + start.x, (start.y + size.y) - vec.y * sf};
 }
 
@@ -158,7 +158,7 @@ void plot_field(const char* name) {
   static float robot_size = 16.3 / 2.0; //cm
 
 
-  vec2 robot_pos = telemetry::data_values[telemetry::position]->vec2_packet;
+  vec2<float> robot_pos = telemetry::data_values[telemetry::position]->vec2_float_packet;
   angle robot_heading = telemetry::data_values[telemetry::heading]->angle_packet;
 
   if(!ImGui::Begin("Field")) {
@@ -193,7 +193,7 @@ void plot_field(const char* name) {
     to_screen_coords(robot_pos + robot_heading.angle * robot_size, start, size, sf),
     IM_COL32(204, 204, 255, 255), line_thickness* sf);
   
-  draw_list->AddCircle(to_screen_coords(telemetry::data_values[telemetry::target_path_point]->vec2_packet, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
+  draw_list->AddCircle(to_screen_coords(telemetry::data_values[telemetry::target_path_point]->vec2_float_packet, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
   // ImPlot::Draw
   // ImPlot::Plot("Robot", );
 
@@ -233,8 +233,8 @@ void update() {
             telemetry::send_packet((telemetry::packet_id)i);
           }
           break;
-        case telemetry::vec2_packet:
-          if(ImGui::DragFloat2(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec2_packet.x))
+        case telemetry::vec2_float_packet:
+          if(ImGui::DragFloat2(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec2_float_packet.x))
             telemetry::send_packet((telemetry::packet_id)i);
           // if(inputFloatVector(packet_id_names[i], &(data_values[i]->vec2_packet.x), 2, "X\0Y"))
             // update_packet((packet_id)i);
@@ -266,7 +266,11 @@ void update() {
     telemetry::send_packet(telemetry::robot_enabled);
   }
 
-  if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter))) {
+  if(
+    ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Backslash)) &&
+    ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_RightBracket)) &&
+    ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_LeftBracket))
+  ) {
     telemetry::data_values[telemetry::robot_enabled]->int_packet = !telemetry::data_values[telemetry::robot_enabled]->int_packet;
     telemetry::send_packet(telemetry::robot_enabled);
   }

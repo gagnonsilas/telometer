@@ -6,5 +6,7 @@ pkgs.mkShell {
     SDL2
     pkg-config
     python311Packages.compiledb
+    compdb
+    neocmakelsp
   ];
 }

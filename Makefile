@@ -1,16 +1,20 @@
 CXX = g++
 
+TELEMETRY_LIB_DIR = $(shell cat telemetry_libs)
+TELEMETRY_REQUIREMENTS = Math Telemetry Controllers
+TELEMETRY_LIBS = $(addsuffix /src, $(addprefix $(TELEMETRY_LIB_DIR)/, $(TELEMETRY_REQUIREMENTS)))
+
 EXE = telometer
 TARGET = target
 IMGUI_DIR = imgui
 SOURCES = dashboard.cpp serial.cpp
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp implot/implot.cpp implot/implot_items.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
-SOURCES += /lib/Math/maths.cpp
+SOURCES += $(TELEMETRY_LIB_DIR)/Math/src/maths.cpp
 OBJS = $(addprefix $(TARGET)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
 UNAME_S := $(shell uname -s)
 
-CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -Ilib/Math -Ilib/Telemetry -Ilib/Controllers -Iimplot
+CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -Iimplot $(addprefix -I , $(TELEMETRY_LIBS))
 CXXFLAGS += -g -Wall -Wformat 
 LIBS =
 
@@ -52,7 +56,7 @@ endif
 $(TARGET)/%.o:%.cpp %.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(TARGET)/%.o:%.cpp lib/*/*.h
+$(TARGET)/%.o:%.cpp $(addsuffix /*.h, $(TELEMETRY_LIBS))
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(TARGET)/%.o:$(IMGUI_DIR)/%.cpp
@@ -61,7 +65,7 @@ $(TARGET)/%.o:$(IMGUI_DIR)/%.cpp
 $(TARGET)/%.o:implot/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(TARGET)/%.o:lib/*/%.cpp lib/*/%.h
+$(TARGET)/%.o:$(TELEMETRY_LIB_DIR)/*/src/%.cpp $(TELEMETRY_LIB_DIR)/*/src/%.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(TARGET)/%.o:$(IMGUI_DIR)/backends/%.cpp
@@ -72,6 +76,13 @@ all: $(EXE)
 
 $(EXE): $(OBJS) 
 	$(CXX) -o $@ $(OBJS) $(CXXFLAGS) $(LIBS)
+
+compile_commands:
+	compiledb make
+	compdb -p ./ list > compile_commands_with_headers.json 2>/dev/null
+	rm compile_commands.json 
+	mv compile_commands_with_headers.json compile_commands.json
+	echo $(CXXFLAGS) > compile_flags.txt
 
 clean:
 	rm -f $(EXE) $(OBJS)
