@@ -102,6 +102,9 @@ void create_plot(struct LivePlot *plot) {
             case telemetry::vec2_float_packet:
               new_val = telemetry::data_values[i]->vec2_float_packet.x;
               break;
+            case telemetry::vec3_float_packet:
+              new_val = telemetry::data_values[i]->vec3_float_packet.x;
+              break;
             default:
              break;
           }
@@ -213,7 +216,8 @@ void update() {
   telemetry::update();
 
   if(ImGui::Begin("Data")) {
-    float temp_data;
+    float temp_angle;
+    int vec3i16_temp[3]; 
 
     for(int i = 0;i < telemetry::packet_ids_count; i++) {
       switch(telemetry::packet_id_types[i]) {
@@ -226,24 +230,31 @@ void update() {
             telemetry::send_packet((telemetry::packet_id)i);
           break;
         case telemetry::angle_packet:
-          temp_data = maths::getDegrees(telemetry::data_values[i]->angle_packet);
-          if(ImGui::DragFloat(telemetry::packet_id_names[i], &temp_data)) {
-            *telemetry::data_values[i] = {.angle_packet = maths::angleFromDegrees(temp_data)};
-            // printf("did this work\n");
+          temp_angle = maths::getDegrees(telemetry::data_values[i]->angle_packet);
+          if(ImGui::DragFloat(telemetry::packet_id_names[i], &temp_angle)) {
+            *telemetry::data_values[i] = {.angle_packet = maths::angleFromDegrees(temp_angle)};
             telemetry::send_packet((telemetry::packet_id)i);
           }
           break;
         case telemetry::vec2_float_packet:
           if(ImGui::DragFloat2(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec2_float_packet.x))
             telemetry::send_packet((telemetry::packet_id)i);
-          // if(inputFloatVector(packet_id_names[i], &(data_values[i]->vec2_packet.x), 2, "X\0Y"))
-            // update_packet((packet_id)i);
+          break;
+        case telemetry::vec3_float_packet:
+          if(ImGui::DragFloat3(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec3_float_packet.x))
+            telemetry::send_packet((telemetry::packet_id)i);
+          break;
+        case telemetry::vec3i16_packet:
+          vec3i16_temp[0] = telemetry::data_values[i]->vec3i16_packet.x;
+          vec3i16_temp[1] = telemetry::data_values[i]->vec3i16_packet.y;
+          vec3i16_temp[2] = telemetry::data_values[i]->vec3i16_packet.z;
+
+          if(ImGui::InputInt3(telemetry::packet_id_names[i], &vec3i16_temp[0]))
+            telemetry::send_packet((telemetry::packet_id)i);
           break;
         case telemetry::PID_constants_packet:
           if(ImGui::DragFloat3(telemetry::packet_id_names[i], &telemetry::data_values[i]->PID_constants_packet.p))
             telemetry::send_packet((telemetry::packet_id)i);
-          // if(inputFloatVector(packet_id_names[i], &(data_values[i]->PID_constants_packet.p), 2, "P\0D"))
-          //   update_packet((packet_id)i);
           break;
       }
     };

@@ -2,4 +2,4 @@ lib
 .cache
 target
 compile_commands.json
-build_libs
+telemetry_libs
