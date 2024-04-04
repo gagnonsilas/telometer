@@ -11,7 +11,6 @@
 #include <cstdint>
 #include <cstdio>
 
-telemetry::data* telemetry::data_values[(int) telemetry::packet_ids_count];
 
 char* telemetry::packet_id_names[] = {
   PACKETS(PACKET_ID_NAME)
@@ -99,11 +98,13 @@ void create_plot(struct LivePlot *plot) {
             case telemetry::angle_packet:
               new_val = maths::getRadians(telemetry::data_values[i]->angle_packet);
               break;
-            case telemetry::vec2_float_packet:
-              new_val = telemetry::data_values[i]->vec2_float_packet.x;
+            case telemetry::vec2f_packet:
+              new_val = telemetry::data_values[i]->vec2f_packet.x;
               break;
-            case telemetry::vec3_float_packet:
-              new_val = telemetry::data_values[i]->vec3_float_packet.x;
+            case telemetry::vec3i16_packet:
+              new_val = (float)(int)telemetry::data_values[i]->vec3i16_packet.x;
+            case telemetry::vec3f_packet:
+              new_val = telemetry::data_values[i]->vec3f_packet.x;
               break;
             default:
              break;
@@ -161,7 +162,7 @@ void plot_field(const char* name) {
   static float robot_size = 16.3 / 2.0; //cm
 
 
-  vec2<float> robot_pos = telemetry::data_values[telemetry::position]->vec2_float_packet;
+  vec2<float> robot_pos = telemetry::data_values[telemetry::position]->vec2f_packet;
   angle robot_heading = telemetry::data_values[telemetry::heading]->angle_packet;
 
   if(!ImGui::Begin("Field")) {
@@ -196,7 +197,7 @@ void plot_field(const char* name) {
     to_screen_coords(robot_pos + robot_heading.angle * robot_size, start, size, sf),
     IM_COL32(204, 204, 255, 255), line_thickness* sf);
   
-  draw_list->AddCircle(to_screen_coords(telemetry::data_values[telemetry::target_path_point]->vec2_float_packet, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
+  draw_list->AddCircle(to_screen_coords(telemetry::data_values[telemetry::target_path_point]->vec2f_packet, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
   // ImPlot::Draw
   // ImPlot::Plot("Robot", );
 
@@ -223,26 +224,26 @@ void update() {
       switch(telemetry::packet_id_types[i]) {
         case telemetry::int_packet:
           if(ImGui::InputInt(telemetry::packet_id_names[i], &(telemetry::data_values[i]->int_packet)))
-            telemetry::send_packet((telemetry::packet_id)i);
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
         case telemetry::float_packet:
-          if(ImGui::DragFloat(telemetry::packet_id_names[i], &(telemetry::data_values[i]->float_packet)))
-            telemetry::send_packet((telemetry::packet_id)i);
+          if(ImGui::DragFloat(telemetry::packet_id_names[i], &(telemetry::data_values[i]->float_packet), 0.01, 0.0001, 1))
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
         case telemetry::angle_packet:
           temp_angle = maths::getDegrees(telemetry::data_values[i]->angle_packet);
           if(ImGui::DragFloat(telemetry::packet_id_names[i], &temp_angle)) {
             *telemetry::data_values[i] = {.angle_packet = maths::angleFromDegrees(temp_angle)};
-            telemetry::send_packet((telemetry::packet_id)i);
+            telemetry::sendPacket((telemetry::packet_id)i);
           }
           break;
-        case telemetry::vec2_float_packet:
-          if(ImGui::DragFloat2(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec2_float_packet.x))
-            telemetry::send_packet((telemetry::packet_id)i);
+        case telemetry::vec2f_packet:
+          if(ImGui::DragFloat2(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec2f_packet.x))
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
-        case telemetry::vec3_float_packet:
-          if(ImGui::DragFloat3(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec3_float_packet.x))
-            telemetry::send_packet((telemetry::packet_id)i);
+        case telemetry::vec3f_packet:
+          if(ImGui::DragFloat3(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec3f_packet.x))
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
         case telemetry::vec3i16_packet:
           vec3i16_temp[0] = telemetry::data_values[i]->vec3i16_packet.x;
@@ -250,11 +251,11 @@ void update() {
           vec3i16_temp[2] = telemetry::data_values[i]->vec3i16_packet.z;
 
           if(ImGui::InputInt3(telemetry::packet_id_names[i], &vec3i16_temp[0]))
-            telemetry::send_packet((telemetry::packet_id)i);
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
         case telemetry::PID_constants_packet:
           if(ImGui::DragFloat3(telemetry::packet_id_names[i], &telemetry::data_values[i]->PID_constants_packet.p))
-            telemetry::send_packet((telemetry::packet_id)i);
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
       }
     };
@@ -274,7 +275,7 @@ void update() {
 
   if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Space))) {
     telemetry::data_values[telemetry::robot_enabled]->int_packet = 0;
-    telemetry::send_packet(telemetry::robot_enabled);
+    telemetry::sendPacket(telemetry::robot_enabled);
   }
 
   if(
@@ -283,7 +284,7 @@ void update() {
     ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_LeftBracket))
   ) {
     telemetry::data_values[telemetry::robot_enabled]->int_packet = !telemetry::data_values[telemetry::robot_enabled]->int_packet;
-    telemetry::send_packet(telemetry::robot_enabled);
+    telemetry::sendPacket(telemetry::robot_enabled);
   }
 
   ImGui::End();

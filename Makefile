@@ -1,16 +1,11 @@
 CXX = g++
 
-TELEMETRY_LIB_DIR = $(shell cat telemetry_libs)
-TELEMETRY_REQUIREMENTS = Math Telemetry Controllers
-TELEMETRY_LIBS = $(addsuffix /src, $(addprefix $(TELEMETRY_LIB_DIR)/, $(TELEMETRY_REQUIREMENTS)))
-
 EXE = telometer
-TARGET = target
+TARGET = .
 IMGUI_DIR = imgui
-SOURCES = dashboard.cpp serial.cpp
+SOURCES = dashboard.cpp serial.cpp maths.cpp pid.cpp telometer.cpp
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp implot/implot.cpp implot/implot_items.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
-SOURCES += $(TELEMETRY_LIB_DIR)/Math/src/maths.cpp
 OBJS = $(addprefix $(TARGET)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
 UNAME_S := $(shell uname -s)
 
