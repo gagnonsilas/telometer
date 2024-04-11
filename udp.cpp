@@ -16,8 +16,9 @@
 #define PORT 62895
 
 // const char *ip = "10.218.11.33";
-// const char *ip = "130.215.137.236";
-const char *ip = "192.168.144.20";
+
+const char *ip = "130.215.137.236";
+// const char *ip = "192.168.144.20";
 
 
 int next_packet = 0; 
