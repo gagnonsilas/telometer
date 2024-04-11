@@ -19,6 +19,10 @@ struct pollfd poll_struct;
 
 namespace telemetry {
 
+  void backendUpdate(){
+    
+  }
+
   unsigned int availableForWrite() {
     return sizeof(data);
   }
@@ -29,14 +33,14 @@ namespace telemetry {
     return available;
   }
 
-  int serial_try_open(const char* name = "romi") {
+  int openSerial(const char* name = "romi") {
     int rc = system("stty -F /dev/serial/by-id/* raw speed 115200 -echo -echoe -echok -echoctl -echoke");
 
     if(rc < 0) {
       return(-1);
     }
   
-    serial = open("/dev/ttyACM0", O_NONBLOCK | O_RDWR);
+    serial = open("/dev/ttyUSB0", O_NONBLOCK | O_RDWR);
 
     poll_struct.fd = serial;
     poll_struct.events = POLLRDNORM;
@@ -55,13 +59,25 @@ namespace telemetry {
 
   void read (uint8_t *buffer, unsigned int size) {
     ::read(serial, buffer, size);
+    for(int i = 0; i < size / 2; i++) {
+      printf(" %hu", *((int16_t*)&buffer[i*2]));
+    }
+    printf("\n");
   }
 
-  void init() {
-    printf("serial: %d\n", serial_try_open());
+  void backendInit() {
+    printf("serial: %d\n", openSerial());
+  }
 
-    for(unsigned int i = 0; i < sizeof(data_values)/sizeof(union data*); i++) {
-      data_values[i] = (data*) malloc(sizeof(union data));
-    }
+  void debug(const char* string) {
+    printf("%s", string);
+  }
+  
+  void* allocate(packet_id id ) {
+    return malloc(dataSize(id));
+  }
+
+  void deallocate(packet_id id ) {
+    return free(data_values[id]);
   }
 }
