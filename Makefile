@@ -7,10 +7,10 @@ TELEMETRY_LIBS = $(addsuffix /src, $(addprefix $(TELEMETRY_LIB_DIR)/, $(TELEMETR
 EXE = telometer
 TARGET = target
 IMGUI_DIR = imgui
-SOURCES = dashboard.cpp serial.cpp
+SOURCES = dashboard.cpp udp.cpp
+SOURCES += $(TELEMETRY_LIB_DIR)/Telemetry/src/telometer.cpp $(TELEMETRY_LIB_DIR)/Math/src/maths.cpp 
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp implot/implot.cpp implot/implot_items.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
-SOURCES += $(TELEMETRY_LIB_DIR)/Math/src/maths.cpp
 OBJS = $(addprefix $(TARGET)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
 UNAME_S := $(shell uname -s)
 
@@ -65,8 +65,13 @@ $(TARGET)/%.o:$(IMGUI_DIR)/%.cpp
 $(TARGET)/%.o:implot/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(TARGET)/%.o:$(TELEMETRY_LIB_DIR)/*/src/%.cpp $(TELEMETRY_LIB_DIR)/*/src/%.h
+
+$(TARGET)/%.o: $(TELEMETRY_LIB_DIR)/Telemetry/src/%.cpp  $(addsuffix /*.h, $(TELEMETRY_LIBS))
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(TARGET)/%.o: $(TELEMETRY_LIB_DIR)/Math/src/%.cpp  $(addsuffix /*.h, $(TELEMETRY_LIBS))
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
 
 $(TARGET)/%.o:$(IMGUI_DIR)/backends/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
