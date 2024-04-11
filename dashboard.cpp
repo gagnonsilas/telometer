@@ -4,15 +4,15 @@
 #include "imgui/backends/imgui_impl_opengl2.h"
 #include "maths.h"
 #include "telemetry.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_opengl.h>
+#include <SDL.h>
+#include <SDL_opengl.h>
 #include <cmath>
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
 
 
-char* telemetry::packet_id_names[] = {
+const char* telemetry::packet_id_names[] = {
   PACKETS(PACKET_ID_NAME)
 };
 
@@ -89,8 +89,8 @@ void create_plot(struct LivePlot *plot) {
         if(plot->plotVars[i]) {
           float new_val = 0;
           switch(telemetry::packet_id_types[i]) {
-            case telemetry::int_packet:
-              new_val = (float) telemetry::data_values[i]->int_packet;
+            case telemetry::uint16_t_packet:
+              new_val = (float) telemetry::data_values[i]->uint16_t_packet;
               break;
             case telemetry::float_packet:
               new_val = telemetry::data_values[i]->float_packet;
@@ -222,28 +222,32 @@ void update() {
 
     for(int i = 0;i < telemetry::packet_ids_count; i++) {
       switch(telemetry::packet_id_types[i]) {
-        case telemetry::int_packet:
-          if(ImGui::InputInt(telemetry::packet_id_names[i], &(telemetry::data_values[i]->int_packet)))
-            telemetry::send_packet((telemetry::packet_id)i);
+        case telemetry::uint16_t_packet: {
+          int temp_int = telemetry::data_values[i]->uint16_t_packet;
+          if(ImGui::InputInt(telemetry::packet_id_names[i], &temp_int)) {
+            telemetry::data_values[i]->uint16_t_packet = temp_int;
+            telemetry::sendPacket((telemetry::packet_id)i);
+          }
+        }
           break;
         case telemetry::float_packet:
           if(ImGui::DragFloat(telemetry::packet_id_names[i], &(telemetry::data_values[i]->float_packet), 0.01, 0.0001, 1))
-            telemetry::send_packet((telemetry::packet_id)i);
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
         case telemetry::angle_packet:
           temp_angle = maths::getDegrees(telemetry::data_values[i]->angle_packet);
           if(ImGui::DragFloat(telemetry::packet_id_names[i], &temp_angle)) {
             *telemetry::data_values[i] = {.angle_packet = maths::angleFromDegrees(temp_angle)};
-            telemetry::send_packet((telemetry::packet_id)i);
+            telemetry::sendPacket((telemetry::packet_id)i);
           }
           break;
         case telemetry::vec2f_packet:
           if(ImGui::DragFloat2(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec2f_packet.x))
-            telemetry::send_packet((telemetry::packet_id)i);
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
         case telemetry::vec3f_packet:
           if(ImGui::DragFloat3(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec3f_packet.x))
-            telemetry::send_packet((telemetry::packet_id)i);
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
         case telemetry::vec3i16_packet:
           vec3i16_temp[0] = telemetry::data_values[i]->vec3i16_packet.x;
@@ -251,11 +255,11 @@ void update() {
           vec3i16_temp[2] = telemetry::data_values[i]->vec3i16_packet.z;
 
           if(ImGui::InputInt3(telemetry::packet_id_names[i], &vec3i16_temp[0]))
-            telemetry::send_packet((telemetry::packet_id)i);
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
         case telemetry::PID_constants_packet:
           if(ImGui::DragFloat3(telemetry::packet_id_names[i], &telemetry::data_values[i]->PID_constants_packet.p))
-            telemetry::send_packet((telemetry::packet_id)i);
+            telemetry::sendPacket((telemetry::packet_id)i);
           break;
       }
     };
@@ -274,8 +278,8 @@ void update() {
   }
 
   if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Space))) {
-    telemetry::data_values[telemetry::robot_enabled]->int_packet = 0;
-    telemetry::send_packet(telemetry::robot_enabled);
+    telemetry::data_values[telemetry::robot_enabled]->uint16_t_packet = 0;
+    telemetry::sendPacket(telemetry::robot_enabled);
   }
 
   if(
@@ -283,8 +287,8 @@ void update() {
     ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_RightBracket)) &&
     ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_LeftBracket))
   ) {
-    telemetry::data_values[telemetry::robot_enabled]->int_packet = !telemetry::data_values[telemetry::robot_enabled]->int_packet;
-    telemetry::send_packet(telemetry::robot_enabled);
+    telemetry::data_values[telemetry::robot_enabled]->uint16_t_packet = !telemetry::data_values[telemetry::robot_enabled]->uint16_t_packet;
+    telemetry::sendPacket(telemetry::robot_enabled);
   }
 
   ImGui::End();
