@@ -5,3 +5,4 @@ compile_commands.json
 telemetry_libs
 imgui.ini
 .ignore
+*.csv
