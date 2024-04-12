@@ -1,4 +1,4 @@
-#include "telemetry.h"
+#include "Telemetry.h"
 
 #include <cstring>
 #include <sys/socket.h>
@@ -30,7 +30,7 @@ struct pollfd poll_struct;
 struct sockaddr_in servaddr; 
 
 
-namespace telemetry {
+namespace Telemetry {
   uint8_t packetBuffer[MAX_PACKET_SIZE] = {};
   int readPointer = 0;
 

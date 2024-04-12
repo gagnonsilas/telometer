@@ -2,8 +2,8 @@
 #include "implot/implot.h"
 #include "imgui/backends/imgui_impl_sdl2.h"
 #include "imgui/backends/imgui_impl_opengl2.h"
-#include "maths.h"
-#include "telemetry.h"
+#include "MathUtils.h"
+#include "Telemetry.h"
 #include <SDL.h>
 #include <SDL_opengl.h>
 #include <cmath>
@@ -12,7 +12,7 @@
 #include <cstdio>
 
 
-const char* telemetry::packet_id_names[] = {
+const char* Telemetry::packet_id_names[] = {
   PACKETS(PACKET_ID_NAME)
 };
 
@@ -44,8 +44,8 @@ struct ScrollingBuffer {
 
 struct LivePlot {
   const char* name;
-  bool plotVars[telemetry::packet_ids_count];
-  ScrollingBuffer buffers[telemetry::packet_ids_count];
+  bool plotVars[Telemetry::packetIdsCount];
+  ScrollingBuffer buffers[Telemetry::packetIdsCount];
   bool paused;
   float time;
   float timescale;
@@ -69,8 +69,8 @@ void create_plot(struct LivePlot *plot) {
 
   ImGui::BeginGroup();
 
-  for(int i = 0; i < telemetry::packet_ids_count; i++) {
-    if(ImGui::Checkbox(telemetry::packet_id_names[i], &(plot->plotVars[i]))) {
+  for(int i = 0; i < Telemetry::packetIdsCount; i++) {
+    if(ImGui::Checkbox(Telemetry::packet_id_names[i], &(plot->plotVars[i]))) {
       plot->buffers[i].Erase();
     }
   }
@@ -85,26 +85,26 @@ void create_plot(struct LivePlot *plot) {
       ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_LockMax);
       ImPlot::SetupAxisLimits(ImAxis_X1, plot->time - plot->timescale, plot->time, ImPlotCond_Always);
 
-      for(int i = 0; i < telemetry::packet_ids_count; i++) {
+      for(int i = 0; i < Telemetry::packetIdsCount; i++) {
         if(plot->plotVars[i]) {
           float new_val = 0;
-          switch(telemetry::packet_id_types[i]) {
-            case telemetry::uint16_t_packet:
-              new_val = (float) telemetry::data_values[i]->uint16_t_packet;
+          switch(Telemetry::packet_id_types[i]) {
+            case Telemetry::uint16_t_packet:
+              new_val = (float) Telemetry::data_values[i]->uint16_t_packet;
               break;
-            case telemetry::float_packet:
-              new_val = telemetry::data_values[i]->float_packet;
+            case Telemetry::float_packet:
+              new_val = Telemetry::data_values[i]->float_packet;
               break;
-            case telemetry::angle_packet:
-              new_val = maths::getRadians(telemetry::data_values[i]->angle_packet);
+            case Telemetry::angle_packet:
+              new_val = MathUtils::getRadians(Telemetry::data_values[i]->angle_packet);
               break;
-            case telemetry::vec2f_packet:
-              new_val = telemetry::data_values[i]->vec2f_packet.x;
+            case Telemetry::vec2f_packet:
+              new_val = Telemetry::data_values[i]->vec2f_packet.x;
               break;
-            case telemetry::vec3i16_packet:
-              new_val = (float)(int)telemetry::data_values[i]->vec3i16_packet.x;
-            case telemetry::vec3f_packet:
-              new_val = telemetry::data_values[i]->vec3f_packet.x;
+            case Telemetry::vec3i16_packet:
+              new_val = (float)(int)Telemetry::data_values[i]->vec3i16_packet.x;
+            case Telemetry::vec3f_packet:
+              new_val = Telemetry::data_values[i]->vec3f_packet.x;
               break;
             default:
              break;
@@ -117,10 +117,10 @@ void create_plot(struct LivePlot *plot) {
       // ImPlot::SetupAxisLimits(ImAxis_X1, plot->time - plot->timescale, plot->time, Im);
     }
 
-    for(int i = 0; i < telemetry::packet_ids_count; i++) {
+    for(int i = 0; i < Telemetry::packetIdsCount; i++) {
       if(plot->plotVars[i]) {
         ImPlot::PlotLine(
-          telemetry::packet_id_names[i], 
+          Telemetry::packet_id_names[i], 
           &plot->buffers[i].Data[0].x, 
           &plot->buffers[i].Data[0].y, 
           plot->buffers[i].Data.size(), 
@@ -162,8 +162,8 @@ void plot_field(const char* name) {
   static float robot_size = 16.3 / 2.0; //cm
 
 
-  vec2<float> robot_pos = telemetry::data_values[telemetry::position]->vec2f_packet;
-  angle robot_heading = telemetry::data_values[telemetry::heading]->angle_packet;
+  vec2<float> robot_pos = Telemetry::data_values[Telemetry::position]->vec2f_packet;
+  angle robot_heading = Telemetry::data_values[Telemetry::heading]->angle_packet;
 
   if(!ImGui::Begin("Field")) {
     ImGui::End();
@@ -197,11 +197,11 @@ void plot_field(const char* name) {
     to_screen_coords(robot_pos + robot_heading.angle * robot_size, start, size, sf),
     IM_COL32(204, 204, 255, 255), line_thickness* sf);
   
-  draw_list->AddCircle(to_screen_coords(telemetry::data_values[telemetry::target_path_point]->vec2f_packet, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
+  draw_list->AddCircle(to_screen_coords(Telemetry::data_values[Telemetry::targetPathPoint]->vec2f_packet, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
   // ImPlot::Draw
   // ImPlot::Plot("Robot", );
 
-  // for(int i = 0; i < packet_ids_count; i++) {
+  // for(int i = 0; i < packetIdsCount; i++) {
   //   ImGui::Checkbox(packet_id_names[i], &(plots[i]));
   //   if(plots[i]) {
   //   }
@@ -214,52 +214,52 @@ void plot_field(const char* name) {
 }
 
 void update() {
-  telemetry::update();
+  Telemetry::update();
 
   if(ImGui::Begin("Data")) {
     float temp_angle;
     int vec3i16_temp[3]; 
 
-    for(int i = 0;i < telemetry::packet_ids_count; i++) {
-      switch(telemetry::packet_id_types[i]) {
-        case telemetry::uint16_t_packet: {
-          int temp_int = telemetry::data_values[i]->uint16_t_packet;
-          if(ImGui::InputInt(telemetry::packet_id_names[i], &temp_int)) {
-            telemetry::data_values[i]->uint16_t_packet = temp_int;
-            telemetry::sendPacket((telemetry::packet_id)i);
+    for(int i = 0;i < Telemetry::packetIdsCount; i++) {
+      switch(Telemetry::packet_id_types[i]) {
+        case Telemetry::uint16_t_packet: {
+          int temp_int = Telemetry::data_values[i]->uint16_t_packet;
+          if(ImGui::InputInt(Telemetry::packet_id_names[i], &temp_int)) {
+            Telemetry::data_values[i]->uint16_t_packet = temp_int;
+            Telemetry::sendPacket((Telemetry::packet_id)i);
           }
         }
           break;
-        case telemetry::float_packet:
-          if(ImGui::DragFloat(telemetry::packet_id_names[i], &(telemetry::data_values[i]->float_packet), 0.01, 0.0001, 1))
-            telemetry::sendPacket((telemetry::packet_id)i);
+        case Telemetry::float_packet:
+          if(ImGui::DragFloat(Telemetry::packet_id_names[i], &(Telemetry::data_values[i]->float_packet), 0.01, 0.0001, 1))
+            Telemetry::sendPacket((Telemetry::packet_id)i);
           break;
-        case telemetry::angle_packet:
-          temp_angle = maths::getDegrees(telemetry::data_values[i]->angle_packet);
-          if(ImGui::DragFloat(telemetry::packet_id_names[i], &temp_angle)) {
-            *telemetry::data_values[i] = {.angle_packet = maths::angleFromDegrees(temp_angle)};
-            telemetry::sendPacket((telemetry::packet_id)i);
+        case Telemetry::angle_packet:
+          temp_angle = MathUtils::getDegrees(Telemetry::data_values[i]->angle_packet);
+          if(ImGui::DragFloat(Telemetry::packet_id_names[i], &temp_angle)) {
+            *Telemetry::data_values[i] = {.angle_packet = MathUtils::angleFromDegrees(temp_angle)};
+            Telemetry::sendPacket((Telemetry::packet_id)i);
           }
           break;
-        case telemetry::vec2f_packet:
-          if(ImGui::DragFloat2(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec2f_packet.x))
-            telemetry::sendPacket((telemetry::packet_id)i);
+        case Telemetry::vec2f_packet:
+          if(ImGui::DragFloat2(Telemetry::packet_id_names[i], &Telemetry::data_values[i]->vec2f_packet.x))
+            Telemetry::sendPacket((Telemetry::packet_id)i);
           break;
-        case telemetry::vec3f_packet:
-          if(ImGui::DragFloat3(telemetry::packet_id_names[i], &telemetry::data_values[i]->vec3f_packet.x))
-            telemetry::sendPacket((telemetry::packet_id)i);
+        case Telemetry::vec3f_packet:
+          if(ImGui::DragFloat3(Telemetry::packet_id_names[i], &Telemetry::data_values[i]->vec3f_packet.x))
+            Telemetry::sendPacket((Telemetry::packet_id)i);
           break;
-        case telemetry::vec3i16_packet:
-          vec3i16_temp[0] = telemetry::data_values[i]->vec3i16_packet.x;
-          vec3i16_temp[1] = telemetry::data_values[i]->vec3i16_packet.y;
-          vec3i16_temp[2] = telemetry::data_values[i]->vec3i16_packet.z;
+        case Telemetry::vec3i16_packet:
+          vec3i16_temp[0] = Telemetry::data_values[i]->vec3i16_packet.x;
+          vec3i16_temp[1] = Telemetry::data_values[i]->vec3i16_packet.y;
+          vec3i16_temp[2] = Telemetry::data_values[i]->vec3i16_packet.z;
 
-          if(ImGui::InputInt3(telemetry::packet_id_names[i], &vec3i16_temp[0]))
-            telemetry::sendPacket((telemetry::packet_id)i);
+          if(ImGui::InputInt3(Telemetry::packet_id_names[i], &vec3i16_temp[0]))
+            Telemetry::sendPacket((Telemetry::packet_id)i);
           break;
-        case telemetry::PID_constants_packet:
-          if(ImGui::DragFloat3(telemetry::packet_id_names[i], &telemetry::data_values[i]->PID_constants_packet.p))
-            telemetry::sendPacket((telemetry::packet_id)i);
+        case Telemetry::PID_constants_packet:
+          if(ImGui::DragFloat3(Telemetry::packet_id_names[i], &Telemetry::data_values[i]->PID_constants_packet.p))
+            Telemetry::sendPacket((Telemetry::packet_id)i);
           break;
       }
     };
@@ -268,8 +268,8 @@ void update() {
   ImGui::End();
 
   if(ImGui::Begin("settings")){
-    char *device = "/dev/ttyACM0";
-    ImGui::InputText("Change Device", device, strlen(device));
+    // char *device = "/dev/ttyACM0";
+    // ImGui::InputText("Change Device", device, strlen(device));
   }
   ImGui::End();
 
@@ -278,8 +278,8 @@ void update() {
   }
 
   if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Space))) {
-    telemetry::data_values[telemetry::robot_enabled]->uint16_t_packet = 0;
-    telemetry::sendPacket(telemetry::robot_enabled);
+    Telemetry::data_values[Telemetry::robotEnabled]->uint16_t_packet = 0;
+    Telemetry::sendPacket(Telemetry::robotEnabled);
   }
 
   if(
@@ -287,8 +287,8 @@ void update() {
     ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_RightBracket)) &&
     ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_LeftBracket))
   ) {
-    telemetry::data_values[telemetry::robot_enabled]->uint16_t_packet = !telemetry::data_values[telemetry::robot_enabled]->uint16_t_packet;
-    telemetry::sendPacket(telemetry::robot_enabled);
+    Telemetry::data_values[Telemetry::robotEnabled]->uint16_t_packet = !Telemetry::data_values[Telemetry::robotEnabled]->uint16_t_packet;
+    Telemetry::sendPacket(Telemetry::robotEnabled);
   }
 
   ImGui::End();
@@ -306,7 +306,7 @@ int main(int, char**) {
   }
 
   // Setup logger
-  telemetry::init();
+  Telemetry::init();
   
   // From 2.0.18: Enable native IME.
 #ifdef SDL_HINT_IME_SHOW_UI
@@ -399,6 +399,6 @@ int main(int, char**) {
   SDL_Quit();
 
   kill(getpid(), 9);
-  telemetry::end();
+  Telemetry::end();
 }
 
