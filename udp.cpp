@@ -15,10 +15,12 @@
 
 #define PORT 62895
 
-// const char *ip = "10.218.11.33";
 
-const char *ip = "130.215.137.236";
-// const char *ip = "192.168.144.20";
+// const char *ip = "130.215.137.236"; // NOILES
+const char *ip = "130.215.137.232"; // NOILES IR ROBOT
+// const char *ip = "130.215.23.103"; // AK
+// const char *ip = "130.215.137.196"; // Kate Romi Noiles
+// const char *ip = "192.168.253.20"; // Silas Hotspot 192.168.***.20
 
 
 int next_packet = 0; 
@@ -57,7 +59,7 @@ namespace Telemetry {
     servaddr.sin_addr.s_addr = inet_addr(ip);
     // servaddr.sin_addr.s_addr = ip;
 
-    int _= bind(udpSocket, (const struct sockaddr*) &servaddr, sizeof(servaddr));
+    int _ = bind(udpSocket, (const struct sockaddr*) &servaddr, sizeof(servaddr));
     printf("udp openn\n");
     return udpSocket != -1;
   }
@@ -67,7 +69,6 @@ namespace Telemetry {
   }
 
   void write(const uint8_t *buffer, unsigned int size) {
-    printf("send\n");
     sendto(udpSocket, (const char *) buffer, size, 0, (const struct sockaddr*) &servaddr, sizeof(servaddr));
   }
 
@@ -84,4 +85,8 @@ namespace Telemetry {
   void deallocate(packet_id id ) { return free(data_values[id]); }
 
   void debug(const char* string) { printf("%s", string); }
+
+  void clear() {
+    readPointer = 0;
+  }
 }

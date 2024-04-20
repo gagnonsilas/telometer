@@ -1,6 +1,7 @@
-#include "telemetry.h"
+#include "Romote.h"
 
 // #include <bits/types/FILE.h>
+#include <cstdint>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -17,14 +18,14 @@ int serial;
 
 struct pollfd poll_struct;
 
-namespace telemetry {
+namespace Romote {
 
   void backendUpdate(){
     
   }
 
   unsigned int availableForWrite() {
-    return sizeof(data);
+    return MAX_PACKET_SIZE;
   }
 
   unsigned int available() {
@@ -40,7 +41,7 @@ namespace telemetry {
       return(-1);
     }
   
-    serial = open("/dev/ttyUSB0", O_NONBLOCK | O_RDWR);
+    serial = open("/dev/ttyACM0", O_NONBLOCK | O_RDWR);
 
     poll_struct.fd = serial;
     poll_struct.events = POLLRDNORM;
@@ -59,10 +60,10 @@ namespace telemetry {
 
   void read (uint8_t *buffer, unsigned int size) {
     ::read(serial, buffer, size);
-    for(int i = 0; i < size / 2; i++) {
-      printf(" %hu", *((int16_t*)&buffer[i*2]));
-    }
-    printf("\n");
+    // for(int i = 0; i < size / 2; i++) {
+    //   printf(" %hu", *((int16_t*)&buffer[i*2]));
+    // }
+    // printf("\n");
   }
 
   void backendInit() {
