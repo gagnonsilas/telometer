@@ -20,8 +20,10 @@ struct pollfd poll_struct;
 
 namespace Romote {
 
-  void backendUpdate(){
+  void backendUpdateBegin(){
     
+  }
+  void backendUpdateEnd() {  
   }
 
   unsigned int availableForWrite() {
@@ -54,7 +56,8 @@ namespace Romote {
     close(serial);
   }
 
-  void write(const uint8_t *buffer, unsigned int size) {
+  void writePacket(packetHeader header, const uint8_t *buffer, unsigned int size) {
+    ::write(serial, &header, sizeof(packetHeader));
     ::write(serial, buffer, size);
   }
 
@@ -64,6 +67,15 @@ namespace Romote {
     //   printf(" %hu", *((int16_t*)&buffer[i*2]));
     // }
     // printf("\n");
+  }
+
+  bool getNextHeader(packetHeader *header) {
+    if(available() < sizeof(packetHeader))
+      return false;
+
+    read((uint8_t*)header, sizeof(packetHeader));
+    // printf("header: %i | ", header->id);
+    return true;
   }
 
   void backendInit() {
@@ -81,4 +93,5 @@ namespace Romote {
   void deallocate(packet_id id ) {
     return free(data_values[id]);
   }
+
 }

@@ -6,9 +6,7 @@
 #include "Telemetry.h"
 #include <SDL.h>
 #include <SDL_opengl.h>
-#include <cmath>
 #include <csignal>
-#include <cstdint>
 #include <cstdio>
 
 #define Telometer Telemetry
@@ -92,21 +90,21 @@ void create_plot(struct LivePlot *plot) {
           float new_val = 0;
           switch(Telometer::packet_id_types[i]) {
             case Telometer::uint16_t_packet:
-              new_val = (float) Telometer::data_values[i]->uint16_t_packet;
+              new_val = *(uint16_t*) Telometer::data_values[i];
               break;
             case Telometer::float_packet:
-              new_val = Telometer::data_values[i]->float_packet;
+              new_val = *(float*) Telometer::data_values[i];
               break;
             case Telometer::angle_packet:
-              new_val = MathUtils::getRadians(Telometer::data_values[i]->angle_packet);
+              new_val = MathUtils::getRadians(*(angle*)Telometer::data_values[i]);
               break;
             case Telometer::vec2f_packet:
-              new_val = Telometer::data_values[i]->vec2f_packet.x;
+              new_val = *(float*)  Telometer::data_values[i];
               break;
             case Telometer::vec3i16_packet:
-              new_val = (float)(int)Telometer::data_values[i]->vec3i16_packet.x;
+              new_val = (float)*(int*)Telometer::data_values[i];
             case Telometer::vec3f_packet:
-              new_val = Telometer::data_values[i]->vec3f_packet.x;
+              new_val = *(float*)Telometer::data_values[i];
               break;
             default:
              break;
@@ -164,8 +162,8 @@ void plot_field(const char* name) {
   static float robot_size = 16.3 / 2.0; //cm
 
 
-  vec2<float> robot_pos = Telometer::data_values[Telometer::position]->vec2f_packet;
-  angle robot_heading = Telometer::data_values[Telometer::heading]->angle_packet;
+  vec2<float> robot_pos = *(vec2<float>*) Telometer::data_values[Telometer::position];
+  angle robot_heading = *(angle*)Telometer::data_values[Telometer::heading];
 
   if(!ImGui::Begin("Field")) {
     ImGui::End();
@@ -224,67 +222,68 @@ void update() {
     for(int i = 0;i < Telometer::packetIdsCount; i++) {
       switch(Telometer::packet_id_types[i]) {
         case Telometer::uint16_t_packet: {
-          int temp_int = Telometer::data_values[i]->uint16_t_packet;
+          int temp_int = *(uint16_t*)Telometer::data_values[i];
           if(ImGui::InputInt(Telometer::packet_id_names[i], &temp_int)) {
-            Telometer::data_values[i]->uint16_t_packet = temp_int;
+            *(int16_t*)Telometer::data_values[i] = temp_int;
             Telometer::sendPacket((Telometer::packet_id)i);
           }
         }
           break;
         case Telometer::int16_t_packet: {
-          int temp_int = Telometer::data_values[i]->int16_t_packet;
+          int temp_int = *(int16_t*)Telometer::data_values[i];
           if(ImGui::InputInt(Telometer::packet_id_names[i], &temp_int)) {
-            Telometer::data_values[i]->int16_t_packet = temp_int;
+            *(int16_t*)Telometer::data_values[i]= temp_int;
             Telometer::sendPacket((Telometer::packet_id)i);
           }
         }
           break;
         case Telometer::float_packet:
-          if(ImGui::DragFloat(Telometer::packet_id_names[i], &(Telometer::data_values[i]->float_packet), 0.01, 0.0001, 1))
+          if(ImGui::DragFloat(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 0.01, 0.0001, 1))
             Telometer::sendPacket((Telometer::packet_id)i);
           break;
         case Telometer::angle_packet:
-          temp_angle = MathUtils::getDegrees(Telometer::data_values[i]->angle_packet);
+          temp_angle = MathUtils::getDegrees(*(angle*)Telometer::data_values[i]);
           if(ImGui::DragFloat(Telometer::packet_id_names[i], &temp_angle)) {
-            *Telometer::data_values[i] = {.angle_packet = MathUtils::angleFromDegrees(temp_angle)};
+            *(angle*)Telometer::data_values[i] = MathUtils::angleFromDegrees(temp_angle);
             Telometer::sendPacket((Telometer::packet_id)i);
           }
           break;
         case Telometer::vec2f_packet:
-          if(ImGui::DragFloat2(Telometer::packet_id_names[i], &Telometer::data_values[i]->vec2f_packet.x))
+          if(ImGui::DragFloat2(Telometer::packet_id_names[i], (float*)Telometer::data_values[i]))
             Telometer::sendPacket((Telometer::packet_id)i);
           break;
         case Telometer::vec3f_packet:
-          if(ImGui::DragFloat3(Telometer::packet_id_names[i], &Telometer::data_values[i]->vec3f_packet.x))
+          if(ImGui::DragFloat3(Telometer::packet_id_names[i], (float*)Telometer::data_values[i]))
             Telometer::sendPacket((Telometer::packet_id)i);
           break;
         case Telometer::vec3i16_packet: {
           int vec3i16_temp[3]; 
-          vec3i16_temp[0] = Telometer::data_values[i]->vec3i16_packet.x;
-          vec3i16_temp[1] = Telometer::data_values[i]->vec3i16_packet.y;
-          vec3i16_temp[2] = Telometer::data_values[i]->vec3i16_packet.z;
+          vec3i16_temp[0] = (*(vec3<int16_t>*)Telometer::data_values[i]).x;
+          vec3i16_temp[1] = (*(vec3<int16_t>*)Telometer::data_values[i]).y;
+          vec3i16_temp[2] = (*(vec3<int16_t>*)Telometer::data_values[i]).z;
 
           if(ImGui::InputInt3(Telometer::packet_id_names[i], &vec3i16_temp[0]))
             Telometer::sendPacket((Telometer::packet_id)i);
-          Telometer::data_values[i]->vec3i16_packet.x = vec3i16_temp[0];
-          Telometer::data_values[i]->vec3i16_packet.y = vec3i16_temp[1];
-          Telometer::data_values[i]->vec3i16_packet.z = vec3i16_temp[2];
+           (*(vec3<int16_t>*)Telometer::data_values[i]).x = vec3i16_temp[0];
+           (*(vec3<int16_t>*)Telometer::data_values[i]).y = vec3i16_temp[1];
+           (*(vec3<int16_t>*)Telometer::data_values[i]).z = vec3i16_temp[2];
           }
           break;
         case Telometer::vec2i16_packet: {
           int vec2i16_temp[2]; 
-          vec2i16_temp[0] = Telometer::data_values[i]->vec2i16_packet.x;
-          vec2i16_temp[1] = Telometer::data_values[i]->vec2i16_packet.y;
+          vec2i16_temp[0] = (*(vec2<int16_t>*)Telometer::data_values[i]).x;
+          vec2i16_temp[1] = (*(vec2<int16_t>*)Telometer::data_values[i]).y;
 
-          if(ImGui::InputInt2(Telometer::packet_id_names[i], &vec2i16_temp[0]))
-          Telometer::data_values[i]->vec2i16_packet.x = vec2i16_temp[0];
-          Telometer::data_values[i]->vec2i16_packet.y = vec2i16_temp[1];
+          if(ImGui::InputInt2(Telometer::packet_id_names[i], &vec2i16_temp[0])) {
+            (*(vec2<int16_t>*)Telometer::data_values[i]).x = vec2i16_temp[0];
+            (*(vec2<int16_t>*)Telometer::data_values[i]).y = vec2i16_temp[1];
             
             Telometer::sendPacket((Telometer::packet_id)i);
           }
+          }
           break;
         // case Telometer::PID_constants_packet:
-        //   if(ImGui::DragFloat3(Telometer::packet_id_names[i], &Telometer::data_values[i]->PID_constants_packet.p))
+        //   if(ImGui::DragFloat3(Telometer::packet_id_names[i], &Telometer::data_values[i].p))
         //     Telometer::sendPacket((Telometer::packet_id)i);
         //   break;
       }
@@ -304,7 +303,7 @@ void update() {
   }
 
   if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Space))) {
-    Telometer::data_values[Telometer::robotEnabled]->uint16_t_packet = 0;
+    *(int16_t*)Telometer::data_values[Telometer::robotEnabled] = 0;
     Telometer::sendPacket(Telometer::robotEnabled);
   }
 
@@ -313,9 +312,27 @@ void update() {
     ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_RightBracket)) &&
     ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_LeftBracket))
   ) {
-    Telometer::data_values[Telometer::robotEnabled]->uint16_t_packet = !Telometer::data_values[Telometer::robotEnabled]->uint16_t_packet;
+    *(uint16_t*)Telometer::data_values[Telometer::robotEnabled] = !*(uint16_t*)Telometer::data_values[Telometer::robotEnabled];
     Telometer::sendPacket(Telometer::robotEnabled);
   }
+
+  const int speed = 2;
+  const int turnSpeed = 2;
+
+  static vec2<int16_t> *volts = (vec2<int16_t>*) Telometer::data_values[Telometer::motorsVolt];
+
+  int forward = speed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_W)) - speed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_R));
+  int turn = turnSpeed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_A)) - turnSpeed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_S));
+
+  if(forward || turn) {
+    *volts = {static_cast<short>(forward + turn), static_cast<short>(forward - turn)};
+  }
+  else  {
+    *volts = {0, 0};
+  }
+
+  Telometer::sendPacket(Telometer::motorsVolt);
+  
 
   ImGui::End();
 
