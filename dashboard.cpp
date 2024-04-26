@@ -157,9 +157,9 @@ ImVec2 to_screen_coords(vec2<float> vec, ImVec2 start, ImVec2 size, float sf){
 }
 
 void plot_field(const char* name) {
-  static float field_x = 200;
-  static float field_y = 100;
-  static float robot_size = 16.3 / 2.0; //cm
+  static const float field_x = 40 * 6;
+  static const float field_y = 40 * 3;
+  static const float robot_size = 16.3 / 2.0; //cm
 
 
   vec2<float> robot_pos = *(vec2<float>*) Telometer::data_values[Telometer::position];
@@ -196,6 +196,14 @@ void plot_field(const char* name) {
     to_screen_coords(robot_pos, start, size, sf), 
     to_screen_coords(robot_pos + robot_heading.angle * robot_size, start, size, sf),
     IM_COL32(204, 204, 255, 255), line_thickness* sf);
+
+
+  for(int i = 0; i < 3; i ++) {
+    draw_list->AddLine(to_screen_coords({0, (float)(20 + i * 40)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * 40)}, start, size, sf), IM_COL32(255, 255, 255, 200), 2*sf);
+  }
+  for(int i = 0; i < 6; i ++) {
+    draw_list->AddLine(to_screen_coords({(float)(20 + i * 40), 0}, start, size, sf), to_screen_coords({(float)(20 + i * 40), field_y}, start, size, sf), IM_COL32(255, 255, 255, 200), 2*sf);
+  }
   
   // draw_list->AddCircle(to_screen_coords(Telometer::data_values[Telometer::targetPathPoint]->vec2f_packet, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
   // ImPlot::Draw
