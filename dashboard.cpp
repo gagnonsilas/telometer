@@ -10,6 +10,7 @@
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
+#include <unistd.h>
 
 
 const char* Telemetry::packet_id_names[] = {
@@ -231,7 +232,7 @@ void update() {
         }
           break;
         case Telemetry::float_packet:
-          if(ImGui::DragFloat(Telemetry::packet_id_names[i], &(Telemetry::data_values[i]->float_packet), 0.01, 0.0001, 1))
+          if(ImGui::InputFloat(Telemetry::packet_id_names[i], &(Telemetry::data_values[i]->float_packet)))
             Telemetry::sendPacket((Telemetry::packet_id)i);
           break;
         case Telemetry::angle_packet:

@@ -56,6 +56,9 @@ endif
 $(TARGET)/%.o:%.cpp %.h
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
+$(TARGET)/%.o:udp.cpp %.h
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
 $(TARGET)/%.o:%.cpp $(addsuffix /*.h, $(TELEMETRY_LIBS))
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
