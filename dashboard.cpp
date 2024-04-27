@@ -1,3 +1,4 @@
+#include "Romote.h"
 #include "imgui/imgui.h"
 #include "implot/implot.h"
 #include "imgui/backends/imgui_impl_sdl2.h"
@@ -8,6 +9,7 @@
 #include <SDL_opengl.h>
 #include <csignal>
 #include <cstdio>
+#include <unistd.h>
 
 #define Telometer Telemetry
 
@@ -15,6 +17,8 @@
 const char* Telometer::packet_id_names[] = {
   PACKETS(PACKET_ID_NAME)
 };
+
+float receivedUpdateDecay[(int) Telometer::packetIdsCount] = {0};
 
 struct ScrollingBuffer {
     int MaxSize;
@@ -58,6 +62,44 @@ LivePlot testplot = {
   .timescale = 10,
 };
 
+LivePlot lineSensorGraph = {
+    .name = "lineSensor",
+    .paused = false,
+    .time = 0,
+    .timescale = 10,
+};
+
+
+void lineSensorPlot(struct LivePlot *plot){
+  if(ImPlot::BeginPlot(plot->name, ImVec2(-1, -1))) {
+    ImPlot::SetupAxes(nullptr, nullptr, 0, 0);
+
+    ImPlot::SetupAxisLimits(ImAxis_X1, -1, 6, ImPlotCond_Always);
+    ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 4100, ImPlotCond_Always);
+
+
+
+    int16_t lineDataInt[6];
+    memcpy(lineDataInt, Telometer::data_values[Telometer::lineSensorRaw], sizeof(lineDataInt));
+    float linePos[6] = {0, 1, 2, 3, 4, 5};
+    float lineData[6]; 
+    for(int i = 0; i < 6; i++){
+      lineData[i] = float(lineDataInt[i]);
+    }
+
+    ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
+    ImPlot::PlotLine(
+        "linedata",
+        linePos,
+        lineData,
+        6,
+        0,
+        0,
+        1 * sizeof(float)
+    );
+    ImPlot::EndPlot();
+  }
+}
 
 
 void create_plot(struct LivePlot *plot) {
@@ -151,6 +193,19 @@ bool inputFloatVector(const char* label, float* v, int len, const char labels[])
   return modified;
 }
 
+void displayInt16Vec(const char* label, int16_t* v, int len) {
+  ImGui::PushItemWidth(ImGui::CalcItemWidth() / (float)len - 13);
+  
+  for(int i = 0; i < len; i++ ) {
+    int temp = (int) v[i];
+    ImGui::LabelText(" ", "%i", temp);
+    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+  }
+  ImGui::PopItemWidth();
+  ImGui::Text("%s", label);
+
+}
+
 
 ImVec2 to_screen_coords(vec2<float> vec, ImVec2 start, ImVec2 size, float sf){
   return {vec.x * sf + start.x, (start.y + size.y) - vec.y * sf};
@@ -205,7 +260,7 @@ void plot_field(const char* name) {
     draw_list->AddLine(to_screen_coords({(float)(20 + i * 40), 0}, start, size, sf), to_screen_coords({(float)(20 + i * 40), field_y}, start, size, sf), IM_COL32(255, 255, 255, 200), 2*sf);
   }
   
-  // draw_list->AddCircle(to_screen_coords(Telometer::data_values[Telometer::targetPathPoint]->vec2f_packet, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
+  draw_list->AddCircle(to_screen_coords(*(vec2<float>*)Telometer::data_values[Telometer::nearestLine] + (robot_pos + robot_heading.angle * 7), start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
   // ImPlot::Draw
   // ImPlot::Plot("Robot", );
 
@@ -228,6 +283,14 @@ void update() {
     float temp_angle;
 
     for(int i = 0;i < Telometer::packetIdsCount; i++) {
+      receivedUpdateDecay[i] *= 0.99;
+      if(Telometer::receivedUpdates[i]) {
+        receivedUpdateDecay[i] = 1;
+        Telometer::receivedUpdates[i] = 0;
+      }
+      ImGui::ColorButton("Updated?", ImVec4(0.1, 0.9 * receivedUpdateDecay[i], 0.05, receivedUpdateDecay[i]));
+      ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+
       switch(Telometer::packet_id_types[i]) {
         case Telometer::uint16_t_packet: {
           int temp_int = *(uint16_t*)Telometer::data_values[i];
@@ -266,9 +329,9 @@ void update() {
           break;
         case Telometer::vec3i16_packet: {
           int vec3i16_temp[3]; 
-          vec3i16_temp[0] = (*(vec3<int16_t>*)Telometer::data_values[i]).x;
-          vec3i16_temp[1] = (*(vec3<int16_t>*)Telometer::data_values[i]).y;
-          vec3i16_temp[2] = (*(vec3<int16_t>*)Telometer::data_values[i]).z;
+          vec3i16_temp[0] = ((int16_t*)Telometer::data_values[i])[0];
+          vec3i16_temp[1] = ((int16_t*)Telometer::data_values[i])[1];
+          vec3i16_temp[2] = ((int16_t*)Telometer::data_values[i])[2];
 
           if(ImGui::InputInt3(Telometer::packet_id_names[i], &vec3i16_temp[0]))
             Telometer::sendPacket((Telometer::packet_id)i);
@@ -290,10 +353,15 @@ void update() {
           }
           }
           break;
-        // case Telometer::PID_constants_packet:
-        //   if(ImGui::DragFloat3(Telometer::packet_id_names[i], &Telometer::data_values[i].p))
-        //     Telometer::sendPacket((Telometer::packet_id)i);
-        //   break;
+        case Telometer::PID_constants_packet:
+          if(ImGui::DragFloat3(Telometer::packet_id_names[i], (float*)Telometer::data_values[i]))
+            Telometer::sendPacket((Telometer::packet_id)i);
+          break;
+        case Telometer::vec6i16_packet: {
+          // displayInt16Vec(Telometer::packet_id_names[i], (int16_t*)Telometer::data_values[i], 6);
+          ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
+          }
+          break;
       }
     };
   };
@@ -309,6 +377,12 @@ void update() {
   if(ImGui::Begin("Plots")) {
     create_plot(&testplot);
   }
+  ImGui::End();
+
+  if(ImGui::Begin("Line Sensor")) {
+    lineSensorPlot(&lineSensorGraph);
+  }
+  ImGui::End();
 
   if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Space))) {
     *(int16_t*)Telometer::data_values[Telometer::robotEnabled] = 0;
@@ -340,9 +414,6 @@ void update() {
   }
 
   Telometer::sendPacket(Telometer::motorsVolt);
-  
-
-  ImGui::End();
 
   plot_field("field");
 }
