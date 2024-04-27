@@ -6,3 +6,5 @@ telemetry_libs
 imgui.ini
 .ignore
 *.csv
+telometer-romote
+telometer

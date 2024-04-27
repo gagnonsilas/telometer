@@ -7,6 +7,5 @@ pkgs.mkShell {
     pkg-config
     python311Packages.compiledb
     compdb
-    neocmakelsp
   ];
 }
