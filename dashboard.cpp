@@ -211,6 +211,14 @@ ImVec2 to_screen_coords(vec2<float> vec, ImVec2 start, ImVec2 size, float sf){
   return {vec.x * sf + start.x, (start.y + size.y) - vec.y * sf};
 }
 
+void drawRobot(ImDrawList *draw_list, vec2<float> robotPos, angle robotHeading, float robotSize, float line_thickness, ImVec2 start, ImVec2 size, float sf) {
+  draw_list->AddCircle(to_screen_coords(robotPos, start, size, sf), robotSize * sf, IM_COL32(255, 0, 255, 255), 0, line_thickness * sf);
+  draw_list->AddLine(
+    to_screen_coords(robotPos, start, size, sf), 
+    to_screen_coords(robotPos + robotHeading.angle * robotSize, start, size, sf),
+    IM_COL32(204, 204, 255, 255), line_thickness* sf);
+}
+
 void plot_field(const char* name) {
   static const float field_x = 40 * 6;
   static const float field_y = 40 * 3;
@@ -245,22 +253,26 @@ void plot_field(const char* name) {
   ImVec2 size = {field_x * sf, field_y * sf};
   
   draw_list->AddRectFilled({start}, {start.x + field_x * sf, start.y + field_y *sf}, IM_COL32(50, 50, 50, 100));
-  
-  draw_list->AddCircle(to_screen_coords(robot_pos, start, size, sf), robot_size * sf, IM_COL32(255, 0, 255, 255), 0, line_thickness * sf);
-  draw_list->AddLine(
-    to_screen_coords(robot_pos, start, size, sf), 
-    to_screen_coords(robot_pos + robot_heading.angle * robot_size, start, size, sf),
-    IM_COL32(204, 204, 255, 255), line_thickness* sf);
-
-
   for(int i = 0; i < 3; i ++) {
-    draw_list->AddLine(to_screen_coords({0, (float)(20 + i * 40)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * 40)}, start, size, sf), IM_COL32(255, 255, 255, 200), 2*sf);
+    draw_list->AddLine(to_screen_coords({0, (float)(20 + i * 40)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * 40)}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
   }
   for(int i = 0; i < 6; i ++) {
-    draw_list->AddLine(to_screen_coords({(float)(20 + i * 40), 0}, start, size, sf), to_screen_coords({(float)(20 + i * 40), field_y}, start, size, sf), IM_COL32(255, 255, 255, 200), 2*sf);
+    draw_list->AddLine(to_screen_coords({(float)(20 + i * 40), 0}, start, size, sf), to_screen_coords({(float)(20 + i * 40), field_y}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
   }
+
+  drawRobot(draw_list, robot_pos, robot_heading, robot_size, line_thickness, start, size, sf);
+
+
+
+  vec2<float> lineSensorPos = *(vec2<float>*)Telometer::data_values[Telometer::nearestLine] + (robot_pos + robot_heading.angle * 7);
   
-  draw_list->AddCircle(to_screen_coords(*(vec2<float>*)Telometer::data_values[Telometer::nearestLine] + (robot_pos + robot_heading.angle * 7), start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
+  draw_list->AddCircle(to_screen_coords(lineSensorPos, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
+
+  static angle *estimatedHeading = (angle*)Telemetry::getValue(Telemetry::lineSensorEstimatedHeading);
+  vec2<float> estimateRobotPos = lineSensorPos - estimatedHeading->angle * 8;
+  drawRobot(draw_list, estimateRobotPos, *estimatedHeading, robot_size, line_thickness, start, size, sf);
+
+  
   // ImPlot::Draw
   // ImPlot::Plot("Robot", );
 
