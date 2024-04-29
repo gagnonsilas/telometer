@@ -79,13 +79,9 @@ void lineSensorPlot(struct LivePlot *plot){
 
 
 
-    int16_t lineDataInt[6];
-    memcpy(lineDataInt, Telometer::data_values[Telometer::lineSensorRaw], sizeof(lineDataInt));
     float linePos[6] = {0, 1, 2, 3, 4, 5};
-    float lineData[6]; 
-    for(int i = 0; i < 6; i++){
-      lineData[i] = float(lineDataInt[i]);
-    }
+    float lineData[6] = {}; 
+    memcpy(lineData, Telometer::data_values[Telometer::lineSensorRaw], sizeof(lineData));
 
     ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
     ImPlot::PlotLine(
@@ -211,17 +207,19 @@ ImVec2 to_screen_coords(vec2<float> vec, ImVec2 start, ImVec2 size, float sf){
   return {vec.x * sf + start.x, (start.y + size.y) - vec.y * sf};
 }
 
-void drawRobot(ImDrawList *draw_list, vec2<float> robotPos, angle robotHeading, float robotSize, float line_thickness, ImVec2 start, ImVec2 size, float sf) {
-  draw_list->AddCircle(to_screen_coords(robotPos, start, size, sf), robotSize * sf, IM_COL32(255, 0, 255, 255), 0, line_thickness * sf);
+void drawRobot(ImDrawList *draw_list, vec2<float> robotPos, angle robotHeading, float robotSize, float line_thickness, ImVec2 start, ImVec2 size, float sf, ImU32 color) {
+  draw_list->AddCircle(to_screen_coords(robotPos, start, size, sf), robotSize * sf, color, 0, line_thickness * sf);
   draw_list->AddLine(
     to_screen_coords(robotPos, start, size, sf), 
     to_screen_coords(robotPos + robotHeading.angle * robotSize, start, size, sf),
-    IM_COL32(204, 204, 255, 255), line_thickness* sf);
+    color, line_thickness* sf);
 }
 
+#define GRID_SPACING 41
+
 void plot_field(const char* name) {
-  static const float field_x = 40 * 6;
-  static const float field_y = 40 * 3;
+  static const float field_x = GRID_SPACING * 6;
+  static const float field_y = GRID_SPACING * 3;
   static const float robot_size = 16.3 / 2.0; //cm
 
 
@@ -254,23 +252,22 @@ void plot_field(const char* name) {
   
   draw_list->AddRectFilled({start}, {start.x + field_x * sf, start.y + field_y *sf}, IM_COL32(50, 50, 50, 100));
   for(int i = 0; i < 3; i ++) {
-    draw_list->AddLine(to_screen_coords({0, (float)(20 + i * 40)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * 40)}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
+    draw_list->AddLine(to_screen_coords({0, (float)(20 + i * GRID_SPACING)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * GRID_SPACING)}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
   }
   for(int i = 0; i < 6; i ++) {
-    draw_list->AddLine(to_screen_coords({(float)(20 + i * 40), 0}, start, size, sf), to_screen_coords({(float)(20 + i * 40), field_y}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
+    draw_list->AddLine(to_screen_coords({(float)(20 + i * GRID_SPACING), 0}, start, size, sf), to_screen_coords({(float)(20 + i * GRID_SPACING), field_y}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
   }
 
-  drawRobot(draw_list, robot_pos, robot_heading, robot_size, line_thickness, start, size, sf);
+  drawRobot(draw_list, robot_pos, robot_heading, robot_size, line_thickness, start, size, sf, IM_COL32(255, 0, 255, 255));
 
-
-
+  static angle *estimatedHeading = (angle*)Telemetry::getValue(Telemetry::lineSensorEstimatedHeading);
   vec2<float> lineSensorPos = *(vec2<float>*)Telometer::data_values[Telometer::nearestLine] + (robot_pos + robot_heading.angle * 7);
+  // vec2<float> lineSensorPos = (robot_pos + robot_heading.angle * 7) + closestLine(robot_pos + robot_heading.angle * 7, robot_heading + *estimatedHeading);
   
   draw_list->AddCircle(to_screen_coords(lineSensorPos, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
 
-  static angle *estimatedHeading = (angle*)Telemetry::getValue(Telemetry::lineSensorEstimatedHeading);
   vec2<float> estimateRobotPos = lineSensorPos - estimatedHeading->angle * 8;
-  drawRobot(draw_list, estimateRobotPos, *estimatedHeading, robot_size, line_thickness, start, size, sf);
+  drawRobot(draw_list, estimateRobotPos, *estimatedHeading, robot_size, line_thickness, start, size, sf, IM_COL32(50, 205, 50, 150 * receivedUpdateDecay[Telemetry::lineSensorEstimatedHeading]));
 
   
   // ImPlot::Draw
@@ -369,7 +366,7 @@ void update() {
           if(ImGui::DragFloat3(Telometer::packet_id_names[i], (float*)Telometer::data_values[i]))
             Telometer::sendPacket((Telometer::packet_id)i);
           break;
-        case Telometer::vec6i16_packet: {
+        case Telometer::vec6f_packet: {
           // displayInt16Vec(Telometer::packet_id_names[i], (int16_t*)Telometer::data_values[i], 6);
           ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
           }
@@ -402,10 +399,16 @@ void update() {
   }
 
   if(
-    ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Backslash)) &&
-    ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_RightBracket)) &&
-    ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_LeftBracket))
-  ) {
+    (
+      ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Backslash)) ||
+      ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightBracket)) ||
+      ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftBracket))
+    ) &&(
+      ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_Backslash)) &&
+      ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_LeftBracket)) &&
+      ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_RightBracket))   
+    )
+    ) {
     *(uint16_t*)Telometer::data_values[Telometer::robotEnabled] = !*(uint16_t*)Telometer::data_values[Telometer::robotEnabled];
     Telometer::sendPacket(Telometer::robotEnabled);
   }
@@ -413,13 +416,13 @@ void update() {
   const int speed = 2;
   const int turnSpeed = 2;
 
-  static vec2<int16_t> *volts = (vec2<int16_t>*) Telometer::data_values[Telometer::motorsVolt];
+  static vec2<float> *volts = (vec2<float>*) Telometer::data_values[Telometer::motorsVolt];
 
-  int forward = speed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_W)) - speed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_R));
-  int turn = turnSpeed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_A)) - turnSpeed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_S));
+  float forward = speed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_W)) - speed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_R));
+  float turn = turnSpeed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_A)) - turnSpeed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_S));
 
   if(forward || turn) {
-    *volts = {static_cast<short>(forward + turn), static_cast<short>(forward - turn)};
+    *volts = {forward - turn,forward +  turn};
   }
   else  {
     *volts = {0, 0};

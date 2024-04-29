@@ -21,8 +21,10 @@
 // const char *ip = "130.215.23.103"; // AK
 // const char *ip = "130.215.23.14"; // AK IR ROBOT
 // const char *ip = "130.215.23.15"; // AK Goatworks-ESP-53
-const char *ip = "130.215.137.152"; // NOILES Goatworks-ESP-53
-// const char *ip = "192.168.4.173"; // Silas Hotspot Goatworks-esp53
+// const char *ip = "130.215.137.152"; // NOILES Goatworks-ESP-53
+// const char *ip = "192.168.144.193"; // Silas Hotspot BAGEL
+// const char *ip = "130.215.137.155"; // NOILES BAGEL 
+const char *ip = "192.168.144.173"; // Silas Hotspot Goatworks-esp53
 // const char *ip = "130.215.137.196"; // Kate Romi Noiles
 // const char *ip = "192.168.253.20"; // Silas Hotspot 192.168.***.20
 // const char *ip = "192.168.7.89"; // Silas Hotspot IR ROBOT
