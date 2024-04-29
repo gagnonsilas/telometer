@@ -62,7 +62,7 @@ namespace Telemetry {
 
   int openUDPSocket(const char* name = "romi") {
     // serial = open("/dev/ttyACM0", O_NONBLOCK | O_RDWR);
-    udpSocket = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+    udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(PORT);
