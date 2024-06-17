@@ -10,9 +10,11 @@
 #include <csignal>
 #include <cstdio>
 #include <unistd.h>
+#include "Maze.h"
 
 #define Telometer Telemetry
 
+#define GRID_SPACING 41.0
 
 const char* Telometer::packet_id_names[] = {
   PACKETS(PACKET_ID_NAME)
@@ -174,27 +176,27 @@ void create_plot(struct LivePlot *plot) {
 }
 
 
-bool inputFloatVector(const char* label, float* v, int len, const char labels[]) {
-  bool modified = false;
-  ImGui::PushItemWidth(ImGui::CalcItemWidth() / (float)len - 13);
-  for(int i = 0; i < len; i++ ) {
-    // ImGui::Text("%s", &labels[i*2]);
-    // ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-    modified = modified || ImGui::InputFloat(&labels[i*2], v + i);
-    ImGui::SetItemTooltip("%s", &labels[i*2]);
-    ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-  }
-  ImGui::PopItemWidth();
-  ImGui::Text("%s", label);
-  return modified;
+bool inputFloatVector(const char* label, float* v, int len) {
+  // bool modified = false;
+  // ImGui::PushItemWidth(ImGui::CalcItemWidth() / (float)len - 13);
+  // for(int i = 0; i < len; i++ ) {
+  //   // ImGui::Text("%s", &labels[i*2]);
+  //   // ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+  //   modified = modified || ImGui::InputFloat(&labels[i*2], v + i);
+  //   ImGui::SetItemTooltip("%s", &labels[i*2]);
+  //   ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+  // }
+  // ImGui::PopItemWidth();
+  // ImGui::Text("%s", label);
+  // return modified;
 }
 
-void displayInt16Vec(const char* label, int16_t* v, int len) {
+void displayFloatVec(const char* label, float* v, int len) {
   ImGui::PushItemWidth(ImGui::CalcItemWidth() / (float)len - 13);
   
   for(int i = 0; i < len; i++ ) {
-    int temp = (int) v[i];
-    ImGui::LabelText(" ", "%i", temp);
+    float temp = (int) v[i];
+    ImGui::InputFloat(" ", &temp);
     ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
   }
   ImGui::PopItemWidth();
@@ -215,7 +217,7 @@ void drawRobot(ImDrawList *draw_list, vec2<float> robotPos, angle robotHeading, 
     color, line_thickness* sf);
 }
 
-#define GRID_SPACING 41
+
 
 void plot_field(const char* name) {
   static const float field_x = GRID_SPACING * 6;
@@ -259,6 +261,54 @@ void plot_field(const char* name) {
   }
 
   drawRobot(draw_list, robot_pos, robot_heading, robot_size, line_thickness, start, size, sf, IM_COL32(255, 0, 255, 255));
+  
+  draw_list->AddCircle(to_screen_coords(*(vec2<float>*)Telemetry::getValue(Telemetry::targetPathPoint), start, size, sf), 2 * sf, IM_COL32(29, 245, 187, 255* receivedUpdateDecay[Telemetry::targetPathPoint]), 0, line_thickness * sf);
+
+  constexpr int count = 1000;
+  static vec2<float> urfTracing[count] = {};
+  static int bufferPointer = 0;
+  urfTracing[bufferPointer] = robot_pos + (robot_heading.angle * (*(uint16_t*)Telemetry::getValue(Telemetry::urfDistance) / 10.0 + 5));
+
+  for(int i = 0; i < count; i ++) {
+    float fade = (float)((i - bufferPointer) % count) / count;
+
+    draw_list->AddCircleFilled(to_screen_coords(urfTracing[i], start, size, sf), 1 * sf, IM_COL32(255, 255, 255, 150* fade), 0);
+
+  }
+  bufferPointer ++;
+  bufferPointer = bufferPointer % count;
+
+  Mapping::Maze testMaze = *(Mapping::Maze*)Telometer::getValue(Telometer::currentMaze);
+  for(int i = 0; i < 4; i ++ ) {
+    for(int j = 0; j < 7; j ++) {
+      Mapping::Cell cell = testMaze.map[i][j];
+      vec2<float> p1, p2, p3;
+      p1 = {static_cast<float>((j+1) * GRID_SPACING), static_cast<float>(i * GRID_SPACING)};
+      p2 = {static_cast<float>(j * GRID_SPACING), static_cast<float>(i * GRID_SPACING)};
+      p3 = {static_cast<float>(j * GRID_SPACING), static_cast<float>((i+1) * GRID_SPACING)};
+
+      switch (cell.leftWall) {
+        case Mapping::closed:
+          draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(212, 40, 75, 255));
+        case Mapping::unexplored:
+          draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(50, 170, 212, 150));
+        case Mapping::open:
+          draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(40, 212, 90, 255));
+      }
+      switch (cell.topWall) {
+        case Mapping::closed:
+          draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(212, 40, 75, 255));
+        case Mapping::unexplored:
+          draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(50, 170, 212, 150));
+        case Mapping::open:
+          draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(40, 212, 90, 255));
+      }
+    }
+  }
+
+  for(int i = 0; i < 2; i ++) {
+    draw_list->AddLine(to_screen_coords(((vec2<float>*)Telemetry::getValue(Telemetry::path))[i], start, size, sf), to_screen_coords(((vec2<float>*)Telemetry::getValue(Telemetry::path))[i+1], start, size, sf), IM_COL32(255, 20, 90, 255), 1 * sf);
+  }
 
   static angle *estimatedHeading = (angle*)Telemetry::getValue(Telemetry::lineSensorEstimatedHeading);
   vec2<float> lineSensorPos = *(vec2<float>*)Telometer::data_values[Telometer::nearestLine] + (robot_pos + robot_heading.angle * 7);
@@ -297,7 +347,10 @@ void update() {
         receivedUpdateDecay[i] = 1;
         Telometer::receivedUpdates[i] = 0;
       }
-      ImGui::ColorButton("Updated?", ImVec4(0.1, 0.9 * receivedUpdateDecay[i], 0.05, receivedUpdateDecay[i]));
+      if(ImGui::ColorButton("Updated?", ImVec4(0.1, 0.9 * receivedUpdateDecay[i], 0.05, receivedUpdateDecay[i]))) {
+        printf("test\n");
+        Telometer::sendPacket((Telometer::packet_id)i);
+      }
       ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
 
       switch(Telometer::packet_id_types[i]) {
@@ -367,9 +420,19 @@ void update() {
             Telometer::sendPacket((Telometer::packet_id)i);
           break;
         case Telometer::vec6f_packet: {
-          // displayInt16Vec(Telometer::packet_id_names[i], (int16_t*)Telometer::data_values[i], 6);
-          ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
+          displayFloatVec(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 6);
+          // ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
           }
+          break;
+        case Telometer::uint32_t_packet: {
+          // displayFloatVec(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 6);
+          ImGui::Text("%c, %c, %c", ((char*)Telometer::data_values[i])[0],((char*)Telometer::data_values[i])[1], ((char*)Telometer::data_values[i])[2]);
+          // ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
+          }
+          break;
+        case Telometer::mazeStruct_packet: 
+          
+          ImGui::Text("MAZE!");
           break;
       }
     };
@@ -414,7 +477,7 @@ void update() {
   }
 
   const int speed = 2;
-  const int turnSpeed = 2;
+  const int turnSpeed = 1;
 
   static vec2<float> *volts = (vec2<float>*) Telometer::data_values[Telometer::motorsVolt];
 

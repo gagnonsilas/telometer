@@ -1,6 +1,7 @@
 #include "Telemetry.h"
 
 #include <cstring>
+#include <stdexcept>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/in.h>
@@ -20,11 +21,11 @@
 // const char *ip = "130.215.137.232"; // NOILES IR ROBOT
 // const char *ip = "130.215.23.103"; // AK
 // const char *ip = "130.215.23.14"; // AK IR ROBOT
-// const char *ip = "130.215.23.15"; // AK Goatworks-ESP-53
-// const char *ip = "130.215.137.152"; // NOILES Goatworks-ESP-53
-// const char *ip = "192.168.144.193"; // Silas Hotspot BAGEL
+// const char *ip = "130.215.23.82"; // AK Goatworks-ESP-53
+const char *ip = "130.215.137.152"; // NOILES Goatworks-ESP-53
+// const char *ip = "192.168.183.193"; // Silas Hotspot BAGEL
 // const char *ip = "130.215.137.155"; // NOILES BAGEL 
-const char *ip = "192.168.144.173"; // Silas Hotspot Goatworks-esp53
+// const char *ip = "192.168.183.173"; // Silas Hotspot Goatworks-esp53
 // const char *ip = "130.215.137.196"; // Kate Romi Noiles
 // const char *ip = "192.168.253.20"; // Silas Hotspot 192.168.***.20
 // const char *ip = "192.168.7.89"; // Silas Hotspot IR ROBOT
@@ -46,11 +47,14 @@ namespace Telemetry {
   int readAvailable = 0;
   int writePointer = 0;
 
-
-  void backendUpdateBegin(){
+  void readNextUDPPacket() {
     ioctl(udpSocket, FIONREAD, &readAvailable);
     ::read(udpSocket, readBuffer, (size_t) readAvailable);
     readPointer = 0;
+  }
+
+  void backendUpdateBegin(){
+    readNextUDPPacket();
   }
 
   void backendUpdateEnd() {  
@@ -64,7 +68,7 @@ namespace Telemetry {
 
   int openUDPSocket(const char* name = "romi") {
     // serial = open("/dev/ttyACM0", O_NONBLOCK | O_RDWR);
-    udpSocket = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+    udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(PORT);
@@ -97,8 +101,8 @@ namespace Telemetry {
   }
 
   bool getNextHeader(packetHeader *header) {
-    if(available() < sizeof(packetHeader))
-      return false;
+    if(available() < sizeof(packetHeader)) readNextUDPPacket();
+    if(available() < sizeof(packetHeader)) return false;
 
     read((uint8_t*)header, sizeof(packetHeader));
     // printf("header: %i | ", header->id);
