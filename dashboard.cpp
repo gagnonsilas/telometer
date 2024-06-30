@@ -1,4 +1,3 @@
-#include "Romote.h"
 #include "imgui/imgui.h"
 #include "imgui_internal.h"
 #include "implot/implot.h"
@@ -11,7 +10,6 @@
 #include <csignal>
 #include <cstdio>
 #include <unistd.h>
-#include "Maze.h"
 
 #define Telometer Telemetry
 
@@ -190,6 +188,7 @@ bool inputFloatVector(const char* label, float* v, int len) {
   // ImGui::PopItemWidth();
   // ImGui::Text("%s", label);
   // return modified;
+  return false;
 }
 
 void displayFloatVec(const char* label, float* v, int len) {
@@ -279,33 +278,33 @@ void plot_field(const char* name) {
   bufferPointer ++;
   bufferPointer = bufferPointer % count;
 
-  Mapping::Maze testMaze = *(Mapping::Maze*)Telometer::getValue(Telometer::currentMaze);
-  for(int i = 0; i < 4; i ++ ) {
-    for(int j = 0; j < 7; j ++) {
-      Mapping::Cell cell = testMaze.map[i][j];
-      vec2<float> p1, p2, p3;
-      p1 = {static_cast<float>((j+1) * GRID_SPACING), static_cast<float>(i * GRID_SPACING)};
-      p2 = {static_cast<float>(j * GRID_SPACING), static_cast<float>(i * GRID_SPACING)};
-      p3 = {static_cast<float>(j * GRID_SPACING), static_cast<float>((i+1) * GRID_SPACING)};
+  // Mapping::Maze testMaze = *(Mapping::Maze*)Telometer::getValue(Telometer::currentMaze);
+  // for(int i = 0; i < 4; i ++ ) {
+  //   for(int j = 0; j < 7; j ++) {
+  //     Mapping::Cell cell = testMaze.map[i][j];
+  //     vec2<float> p1, p2, p3;
+  //     p1 = {static_cast<float>((j+1) * GRID_SPACING), static_cast<float>(i * GRID_SPACING)};
+  //     p2 = {static_cast<float>(j * GRID_SPACING), static_cast<float>(i * GRID_SPACING)};
+  //     p3 = {static_cast<float>(j * GRID_SPACING), static_cast<float>((i+1) * GRID_SPACING)};
 
-      switch (cell.leftWall) {
-        case Mapping::closed:
-          draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(212, 40, 75, 255));
-        case Mapping::unexplored:
-          draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(50, 170, 212, 150));
-        case Mapping::open:
-          draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(40, 212, 90, 255));
-      }
-      switch (cell.topWall) {
-        case Mapping::closed:
-          draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(212, 40, 75, 255));
-        case Mapping::unexplored:
-          draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(50, 170, 212, 150));
-        case Mapping::open:
-          draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(40, 212, 90, 255));
-      }
-    }
-  }
+  //     switch (cell.leftWall) {
+  //       case Mapping::closed:
+  //         draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(212, 40, 75, 255));
+  //       case Mapping::unexplored:
+  //         draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(50, 170, 212, 150));
+  //       case Mapping::open:
+  //         draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(40, 212, 90, 255));
+  //     }
+  //     switch (cell.topWall) {
+  //       case Mapping::closed:
+  //         draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(212, 40, 75, 255));
+  //       case Mapping::unexplored:
+  //         draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(50, 170, 212, 150));
+  //       case Mapping::open:
+  //         draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(40, 212, 90, 255));
+  //     }
+  //   }
+  // }
 
   for(int i = 0; i < 2; i ++) {
     draw_list->AddLine(to_screen_coords(((vec2<float>*)Telemetry::getValue(Telemetry::path))[i], start, size, sf), to_screen_coords(((vec2<float>*)Telemetry::getValue(Telemetry::path))[i+1], start, size, sf), IM_COL32(255, 20, 90, 255), 1 * sf);
@@ -416,10 +415,6 @@ void update() {
           }
           }
           break;
-        case Telometer::PID_constants_packet:
-          if(ImGui::DragFloat3(Telometer::packet_id_names[i], (float*)Telometer::data_values[i]))
-            Telometer::sendPacket((Telometer::packet_id)i);
-          break;
         case Telometer::vec6f_packet: {
           displayFloatVec(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 6);
           // ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
@@ -430,10 +425,6 @@ void update() {
           ImGui::Text("%c, %c, %c", ((char*)Telometer::data_values[i])[0],((char*)Telometer::data_values[i])[1], ((char*)Telometer::data_values[i])[2]);
           // ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
           }
-          break;
-        case Telometer::mazeStruct_packet: 
-          
-          ImGui::Text("MAZE!");
           break;
       }
     };

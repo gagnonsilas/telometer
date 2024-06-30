@@ -1,20 +1,18 @@
 CXX = g++
 
-TELEMETRY_LIB_DIR = $(shell cat telemetry_libs)
 TELEMETRY_REQUIREMENTS = Utils Telometer Controllers
-TELEMETRY_LIBS = $(addsuffix /src, $(addprefix $(TELEMETRY_LIB_DIR)/, $(TELEMETRY_REQUIREMENTS)))
 
 EXE = telometer
 TARGET = target
 IMGUI_DIR = imgui
 SOURCES = dashboard.cpp udp.cpp
-SOURCES += $(TELEMETRY_LIB_DIR)/Telometer/src/Telemetry.cpp $(TELEMETRY_LIB_DIR)/Utils/src/MathUtils.cpp 
+SOURCES += Telemetry.cpp MathUtils.cpp 
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp implot/implot.cpp implot/implot_items.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
 OBJS = $(addprefix $(TARGET)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
 UNAME_S := $(shell uname -s)
 
-CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -Iimplot $(addprefix -I , $(TELEMETRY_LIBS))
+CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -Iimplot -I*.h
 CXXFLAGS += -g -Wall -Wformat 
 LIBS =
 
