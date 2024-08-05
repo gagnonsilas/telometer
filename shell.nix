@@ -8,5 +8,13 @@ pkgs.mkShell {
     python311Packages.compiledb
     compdb
     neocmakelsp
+
+    expect
+    # for Gattlib
+    readline
+    bluez
+    glib
+    #python311Packages.libbluetooth-dev
+    #python311Packages.libreadline-dev
   ];
 }
