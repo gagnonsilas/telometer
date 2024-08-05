@@ -5,6 +5,7 @@ pkgs.mkShell {
     # libusb
     SDL2
     pkg-config
+    zig
     python311Packages.compiledb
     compdb
   ];

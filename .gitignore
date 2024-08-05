@@ -2,6 +2,7 @@ lib
 .cache
 target
 compile_commands.json
+compile_flags.txt
 telemetry_libs
 imgui.ini
 .ignore
