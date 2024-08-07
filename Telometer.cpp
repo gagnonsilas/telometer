@@ -1,10 +1,12 @@
 #include "Telometer.h"
+#include "Telemetry.h"
+#include <cstring>
 
 namespace Telometer {
 
 void init(TelometerInstance instance) {
-  for (unsigned int i = 0; i < sizeof(data_values) / sizeof(void *); i++) {
-    data_values[i] = malloc((packet_id)i);
+  for (unsigned int i = 0; i < instance.count; i++) {
+    instance.packetStruct[i].pointer = malloc(instance.packetStruct[i].size);
   }
   instance.backend->backendInit();
 }
@@ -17,7 +19,7 @@ void update(TelometerInstance instance) {
 
     Data packet = instance.packetStruct[currentId];
 
-    if (packet.state == sent || packet.state == updatedRemote) {
+    if (packet.state == sent || packet.state == received) {
       continue;
     }
 
@@ -33,9 +35,8 @@ void update(TelometerInstance instance) {
   }
 
   packet_id id;
-  while (instance.backend->getNextID(
-      &id)) { // Read incoming serial data and update corresponding packets
-    // debug("test2\n");
+  while (instance.backend->getNextID(&id)) {
+    
     if (id >= instance.count) {
       debug("invalid header\n");
       continue;
@@ -43,31 +44,34 @@ void update(TelometerInstance instance) {
 
     Data packet = instance.packetStruct[id];
 
+    if(packet.state == lockedQueued) {
+      uint8_t* trashBin = (uint8_t*)alloca(packet.size);
+      instance.backend->read(trashBin, packet.size);
+      continue;
+    }
+
     instance.backend->read((uint8_t *)packet.pointer, packet.size);
 
-    packet.state = updatedRemote;
+    packet.state = received;
   }
+
   instance.backend->backendUpdateEnd();
 }
-int dataSize(packet_id id) { return packet_sizes[id]; }
 
 // Log a value for a specific log ID
-void *sendValue(Data packet, void *data) {
+void sendValue(Data packet, void *data) {
   memcpy(packet.pointer, data, packet.size);
-  packet.state = send;
-
-  return data_values[id];
+  packet.state = queued;
 }
 
 // Log a data pointer for a specific log ID
 void initPacket(Data packet, void *data) {
   free(packet.pointer);
   packet.pointer = data;
-  packet.state = updatedLocal;
-  return data_values[id];
+  packet.state = queued;
 }
 
 // Mark a packet for update
-void sendPacket(Data packet) { packet.state = updatedLocal; }
+void sendPacket(Data packet) { packet.state = queued; }
 
 } // namespace Telometer

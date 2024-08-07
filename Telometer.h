@@ -31,9 +31,9 @@ constexpr uint8_t MAX_PACKET_SIZE = 64;
 
 enum PacketState {
   sent,
-  send,
-  sendHighPriority,
-  updated,
+  queued,
+  lockedQueued,
+  received,
 };
 
 typedef uint8_t packet_id;
@@ -70,12 +70,15 @@ struct TelometerInstance {
 void init(TelometerInstance instance);
 void initPacket(Data packet, void* data); 
 void sendPacket(Data packet);
-void *sendValue(Data packet, void *data);
+void sendValue(Data packet, void *data);
 void debug(const char *string);
 
 void update(TelometerInstance instance);
 } // namespace Telometer
 
+
+
+//// SHARED HEADER
 extern Telometer::Backend *backend;
 
 #define PACKETS(args...)                                                       \
@@ -89,7 +92,9 @@ extern Telometer::Backend *backend;
 
 TELOMETER_INSTANCE(Telemetry, PACKET_TYPES, PACKETS, backend)
 
-// In c file
+
+
+//// In c file
 TelemetryPackets Telemetry = {};
 
 Telometer ::TelometerInstance TelemetryInstance = {
@@ -98,6 +103,10 @@ Telometer ::TelometerInstance TelemetryInstance = {
     .nextPacket = 0,
     .packetStruct = {{(::Telometer ::Data *)&Telemetry}},
 };
+
+
+
+
 
 vec3f thing = {};
 
