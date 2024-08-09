@@ -9,3 +9,6 @@ imgui.ini
 *.csv
 telometer-romote
 telometer
+
+**/.zig-cache
+**/zig-out
