@@ -1,5 +1,5 @@
-#include "Telometer.h"
-#include "Telemetry.h"
+#include "TelometerImpl.h"
+#include <cstdlib>
 #include <cstring>
 
 namespace Telometer {
@@ -15,15 +15,15 @@ void update(TelometerInstance instance) {
   instance.backend->backendUpdateBegin();
   for (int i = instance.nextPacket;
        i < instance.nextPacket + (int)instance.count; i++) {
-    packet_id currentId = (packet_id)(i % instance.count);
+    packetID currentId = (packetID)(i % instance.count);
 
     Data packet = instance.packetStruct[currentId];
 
-    if (packet.state == sent || packet.state == received) {
+    if (packet.state == TelometerSent || packet.state == TelometerReceived) {
       continue;
     }
 
-    if (packet.size + sizeof(packet_id) >
+    if (packet.size + sizeof(packetID) >
         instance.backend->availableForWrite()) {
       instance.nextPacket = currentId;
       break;
@@ -31,10 +31,10 @@ void update(TelometerInstance instance) {
 
     instance.backend->writePacket(packet);
 
-    packet.state = sent;
+    packet.state = TelometerSent;
   }
 
-  packet_id id;
+  packetID id;
   while (instance.backend->getNextID(&id)) {
     
     if (id >= instance.count) {
@@ -44,7 +44,7 @@ void update(TelometerInstance instance) {
 
     Data packet = instance.packetStruct[id];
 
-    if(packet.state == lockedQueued) {
+    if(packet.state == TelometerLockedQueued) {
       uint8_t* trashBin = (uint8_t*)alloca(packet.size);
       instance.backend->read(trashBin, packet.size);
       continue;
@@ -52,7 +52,7 @@ void update(TelometerInstance instance) {
 
     instance.backend->read((uint8_t *)packet.pointer, packet.size);
 
-    packet.state = received;
+    packet.state = TelometerReceived;
   }
 
   instance.backend->backendUpdateEnd();
@@ -61,17 +61,17 @@ void update(TelometerInstance instance) {
 // Log a value for a specific log ID
 void sendValue(Data packet, void *data) {
   memcpy(packet.pointer, data, packet.size);
-  packet.state = queued;
+  packet.state = TelometerQueued;
 }
 
 // Log a data pointer for a specific log ID
 void initPacket(Data packet, void *data) {
   free(packet.pointer);
   packet.pointer = data;
-  packet.state = queued;
+  packet.state = TelometerQueued;
 }
 
 // Mark a packet for update
-void sendPacket(Data packet) { packet.state = queued; }
+void sendPacket(Data packet) { packet.state = TelometerQueued; }
 
 } // namespace Telometer

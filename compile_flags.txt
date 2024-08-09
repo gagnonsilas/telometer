@@ -1,1 +1,0 @@
--std=c++11 -Iimgui -Iimgui/backends -Iimplot -I*.h -g -Wall -Wformat -I/nix/store/l0akhzx1ixxqgap1j65mx3zxjqg6kkk4-SDL2-2.30.4-dev/include/SDL2 -I/nix/store/l0akhzx1ixxqgap1j65mx3zxjqg6kkk4-SDL2-2.30.4-dev/include/SDL2 -I/nix/store/l0akhzx1ixxqgap1j65mx3zxjqg6kkk4-SDL2-2.30.4-dev/include/SDL2 -D_REENTRANT
