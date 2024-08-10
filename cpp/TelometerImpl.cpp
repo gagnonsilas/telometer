@@ -8,11 +8,11 @@ void init(TelometerInstance instance) {
   for (unsigned int i = 0; i < instance.count; i++) {
     instance.packetStruct[i].pointer = malloc(instance.packetStruct[i].size);
   }
-  instance.backend->backendInit();
+  instance.backend->init();
 }
 
 void update(TelometerInstance instance) {
-  instance.backend->backendUpdateBegin();
+  instance.backend->updateBegin();
   for (int i = instance.nextPacket;
        i < instance.nextPacket + (int)instance.count; i++) {
     packetID currentId = (packetID)(i % instance.count);
@@ -55,7 +55,7 @@ void update(TelometerInstance instance) {
     packet.state = TelometerReceived;
   }
 
-  instance.backend->backendUpdateEnd();
+  instance.backend->pdateEnd();
 }
 
 // Log a value for a specific log ID

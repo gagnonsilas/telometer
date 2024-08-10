@@ -12,9 +12,9 @@ typedef uint8_t packetID;
 
 class Backend {
 public:
-  void backendInit();        // run after the main init
-  void backendUpdateBegin(); // run before update every loop
-  void backendUpdateEnd();   // run after update every loop
+  void init();        // run after the main init
+  void updateBegin(); // run before update every loop
+  void updateEnd();   // run after update every loop
   unsigned int available();
   unsigned int availableForWrite();
   void writePacket(Data data);

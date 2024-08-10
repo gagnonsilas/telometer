@@ -12,3 +12,5 @@
   P(N, vec3f, float)
 
 TELOMETER_INSTANCE(Telemetry, PACKET_TYPES, PACKETS)
+
+extern TelemetryPackets packets;
