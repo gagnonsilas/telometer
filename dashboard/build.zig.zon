@@ -6,7 +6,7 @@
     //
     // It is redundant to include "zig" in this name because it is already
     // within the Zig package namespace.
-    .name = "dear_imgui_zig",
+    .name = "cimgui_zig",
 
     // This is a [Semantic Version](https://semver.org/).
     // In a future version of Zig it will be used for package deduplication.
@@ -23,13 +23,21 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
-        .imgui = .{
-            .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.91.0.tar.gz",
-            .hash = "1220c051b18b0801740b21e5aa3bb27d5b5aa338612313594cad902558529715f9c9",
+        .cimgui = .{
+            .url = "git+https://github.com/cimgui/cimgui/#35a4e8f8932c6395156ffacee288b9c30e50cb63",
+            .hash = "12202b3fbdc2d6df12b531328cc74d9686abd0fbeb5807dddf559e9a03b11ae1fe26",
         },
-        .dear_bindings = .{
-            .url = "https://github.com/dearimgui/dear_bindings/archive/b853e4f2f735e83d7533b40b9031552f5a1d6a95.tar.gz",
-            .hash = "1220bf5c54aa412e6d06183ccd1f93eff09563408e7b18bce5d9932aec687967ac8d",
+        .cimplot = .{
+            .url = "git+https://github.com/cimgui/cimplot#439f705b1cfae0e9fbe42c13ab5b45becc47d404",
+            .hash = "1220bc814165a4eca6230f318a1e801911fb5db7e4a2076c140eaec2e8f9dbf231d7",
+        },
+        .imgui = .{
+            .url = "git+https://github.com/ocornut/imgui#7b6314f47d2aaa3758cfeeca66af34f5c9309ca4",
+            .hash = "12204aabb4ee82210f81a57bb6b8163062b5cbc775c13e36744dcc42b1e7c36bcf86",
+        },
+        .implot = .{
+            .url = "git+https://github.com/epezent/implot#f156599faefe316f7dd20fe6c783bf87c8bb6fd9",
+            .hash = "1220ea199cadbb875be69fffeae45bb844577d1353a941690d09d658bd2ea4c371fc",
         },
     },
     .paths = .{

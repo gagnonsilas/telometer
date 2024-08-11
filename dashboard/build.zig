@@ -3,82 +3,128 @@ const std = @import("std");
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
-pub fn build(b: *std.Build) !void {
+pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
     const imgui_dep = b.dependency("imgui", .{});
-    const dear_bindings_dep = b.dependency("dear_bindings", .{});
+    const implot_dep = b.dependency("implot", .{});
+    const cimgui_dep = b.dependency("cimgui", .{});
+    const cimplot_dep = b.dependency("cimplot", .{});
 
-    const dear_bindings_py = dear_bindings_dep.path("dear_bindings.py");
+    const zig_imgui = b.addStaticLibrary(.{
+        .name = "zig-imgui",
+        .target = target,
+        .optimize = optimize,
+    });
 
-    const imgui_lib = b.addStaticLibrary(.{ .name = "imgui_zig", .target = target, .optimize = optimize });
+    b.installArtifact(zig_imgui);
 
-    if (std.fs.openFileAbsolute(b.path("generated/cimgui.h").getPath(b), .{}) == error.FileNotFound) {
-        const generate_main_bindings = b.addSystemCommand(&.{"python"});
-        generate_main_bindings.addFileArg(dear_bindings_py);
-        generate_main_bindings.addArgs(&.{ "-o", "generated/cimgui" });
-        generate_main_bindings.addFileArg(imgui_dep.path("imgui.h"));
+    zig_imgui.linkLibC();
+    zig_imgui.linkLibCpp();
+    zig_imgui.linkSystemLibrary("glfw");
+    zig_imgui.linkSystemLibrary("GL");
 
-        imgui_lib.step.dependOn(&generate_main_bindings.step);
-    }
+    zig_imgui.root_module.addCMacro("IMGUI_DISABLE_OBSOLETE_FUNCTIONS", "1");
+    zig_imgui.root_module.addCMacro("IMGUI_IMPL_API", "extern \"C\" ");
 
-    if (std.fs.openFileAbsolute(b.path("generated/cimgui_impl_glfw.h").getPath(b), .{}) == error.FileNotFound) {
-        const generate_glfw_backend_bindings = b.addSystemCommand(&.{"python"});
-        generate_glfw_backend_bindings.addFileArg(dear_bindings_py);
-        generate_glfw_backend_bindings.addArg("--backend");
-        generate_glfw_backend_bindings.addArg("--imconfig-path");
-        generate_glfw_backend_bindings.addFileArg(imgui_dep.path("imconfig.h"));
-        generate_glfw_backend_bindings.addArgs(&.{ "-o", "generated/cimgui_impl_glfw" });
-        generate_glfw_backend_bindings.addFileArg(imgui_dep.path("backends/imgui_impl_glfw.h"));
+    // imgui
+    zig_imgui.addIncludePath(imgui_dep.path(""));
+    // zig_imgui.addIncludePath(imgui_dep.path("backends"));
+    zig_imgui.addCSourceFiles(.{
+        .root = imgui_dep.path(""),
+        .files = &.{
+            "imgui.cpp",
+            "imgui_demo.cpp",
+            "imgui_draw.cpp",
+            "imgui_tables.cpp",
+            "imgui_widgets.cpp",
+        },
+    });
+    zig_imgui.addCSourceFiles(
+        .{
+            .root = imgui_dep.path("backends"),
+            .files = &.{
+                "imgui_impl_opengl3.cpp",
+                "imgui_impl_glfw.cpp",
+            },
+        },
+    );
 
-        imgui_lib.step.dependOn(&generate_glfw_backend_bindings.step);
-    }
+    // implot
+    zig_imgui.addIncludePath(implot_dep.path(""));
+    zig_imgui.addCSourceFiles(
+        .{
+            .root = implot_dep.path(""),
+            .files = &.{
+                "implot.cpp",
+                "implot_demo.cpp",
+                "implot_items.cpp",
+            },
+        },
+    );
 
-    if (std.fs.openFileAbsolute(b.path("generated/cimgui_impl_opengl3.h").getPath(b), .{}) == error.FileNotFound) {
-        const generate_opengl_backend_bindings = b.addSystemCommand(&.{"python"});
-        generate_opengl_backend_bindings.addFileArg(dear_bindings_py);
-        generate_opengl_backend_bindings.addArg("--backend");
-        generate_opengl_backend_bindings.addArg("--imconfig-path");
-        generate_opengl_backend_bindings.addFileArg(imgui_dep.path("imconfig.h"));
-        generate_opengl_backend_bindings.addArgs(&.{ "-o", "generated/cimgui_impl_opengl3" });
-        generate_opengl_backend_bindings.addFileArg(imgui_dep.path("backends/imgui_impl_opengl3.h"));
+    // cimgui
+    const modify_cimgui_cpp = b.addSystemCommand(&.{"sed"});
+    modify_cimgui_cpp.addArgs(&.{
+        "-E",
+        "s/#include \".\\/imgui\\/([^\"]+)\"/#include <\\1>/",
+    });
+    modify_cimgui_cpp.addFileArg(cimgui_dep.path("cimgui.cpp"));
 
-        imgui_lib.step.dependOn(&generate_opengl_backend_bindings.step);
-    }
+    const cimgui_cpp_tmp = modify_cimgui_cpp.captureStdOut();
 
-    imgui_lib.addCSourceFiles(.{ .root = b.path("generated"), .files = &.{ "cimgui.cpp", "cimgui_impl_glfw.cpp", "cimgui_impl_opengl3.cpp" } });
-    imgui_lib.addCSourceFiles(.{ .root = imgui_dep.path(""), .files = &.{ "imgui.cpp", "imgui_demo.cpp", "imgui_draw.cpp", "imgui_tables.cpp", "imgui_widgets.cpp" } });
-    imgui_lib.addCSourceFiles(.{ .root = imgui_dep.path("backends"), .files = &.{ "imgui_impl_glfw.cpp", "imgui_impl_opengl3.cpp" } });
+    const gen_cimgui_cpp = b.addWriteFiles();
+    const cimgui_cpp = gen_cimgui_cpp.addCopyFile(cimgui_cpp_tmp, "cimgui.cpp");
 
-    imgui_lib.addIncludePath(b.path("generated"));
-    imgui_lib.addIncludePath(imgui_dep.path(""));
-    imgui_lib.addIncludePath(imgui_dep.path("backends"));
+    gen_cimgui_cpp.step.dependOn(&modify_cimgui_cpp.step);
+    zig_imgui.step.dependOn(&gen_cimgui_cpp.step);
 
-    imgui_lib.linkLibCpp();
-    imgui_lib.linkLibC();
-    imgui_lib.linkSystemLibrary("glfw");
+    zig_imgui.addIncludePath(cimgui_dep.path(""));
+    // zig_imgui.addIncludePath(cimgui_dep.path("generator/output"));
+    zig_imgui.addCSourceFile(.{ .file = cimgui_cpp });
+    zig_imgui.installHeader(cimgui_dep.path("cimgui.h"), "cimgui.h");
+    zig_imgui.installHeader(cimgui_dep.path("generator/output/cimgui_impl.h"), "cimgui_impl.h");
 
-    b.installArtifact(imgui_lib);
+    // cimplot
+    const modify_cimplot_cpp = b.addSystemCommand(&.{"sed"});
+    modify_cimplot_cpp.addArgs(&.{
+        "-E",
+        "s/#include \".\\/implot\\/([^\"]+)\"/#include <\\1>/",
+    });
+    modify_cimplot_cpp.addFileArg(cimplot_dep.path("cimplot.cpp"));
+
+    const cimplot_cpp_tmp = modify_cimplot_cpp.captureStdOut();
+
+    const gen_cimplot_cpp = b.addWriteFiles();
+    const cimplot_cpp = gen_cimplot_cpp.addCopyFile(cimplot_cpp_tmp, "cimplot.cpp");
+
+    gen_cimgui_cpp.step.dependOn(&modify_cimplot_cpp.step);
+    zig_imgui.step.dependOn(&gen_cimplot_cpp.step);
+
+    zig_imgui.addIncludePath(cimplot_dep.path(""));
+    zig_imgui.addCSourceFile(.{ .file = cimplot_cpp });
+    zig_imgui.installHeader(cimplot_dep.path("cimplot.h"), "cimplot.h");
 
     const exe = b.addExecutable(.{
-        .name = "dear_imgui_zig",
+        .name = "cimgui_zig",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
 
-    exe.linkLibC();
-    exe.linkLibrary(imgui_lib);
-    exe.linkSystemLibrary("GL");
-    exe.linkSystemLibrary("glfw");
-
-    exe.addIncludePath(imgui_dep.path(""));
-    exe.addIncludePath(b.path("generated"));
-
     b.installArtifact(exe);
 
+    exe.linkLibC();
+
+    exe.root_module.addCMacro("CIMGUI_USE_GLFW", "");
+    exe.root_module.addCMacro("CIMGUI_USE_OPENGL3", "");
+    exe.linkLibrary(zig_imgui);
+    exe.linkSystemLibrary("glfw");
+    exe.linkSystemLibrary("GL");
+
     const run_cmd = b.addRunArtifact(exe);
+
     run_cmd.step.dependOn(b.getInstallStep());
 
     if (b.args) |args| {
