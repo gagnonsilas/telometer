@@ -30,7 +30,6 @@ pub fn build(b: *std.Build) void {
 
     // imgui
     zig_imgui.addIncludePath(imgui_dep.path(""));
-    // zig_imgui.addIncludePath(imgui_dep.path("backends"));
     zig_imgui.addCSourceFiles(.{
         .root = imgui_dep.path(""),
         .files = &.{
@@ -81,7 +80,6 @@ pub fn build(b: *std.Build) void {
     zig_imgui.step.dependOn(&gen_cimgui_cpp.step);
 
     zig_imgui.addIncludePath(cimgui_dep.path(""));
-    // zig_imgui.addIncludePath(cimgui_dep.path("generator/output"));
     zig_imgui.addCSourceFile(.{ .file = cimgui_cpp });
     zig_imgui.installHeader(cimgui_dep.path("cimgui.h"), "cimgui.h");
     zig_imgui.installHeader(cimgui_dep.path("generator/output/cimgui_impl.h"), "cimgui_impl.h");
