@@ -113,7 +113,7 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
-    exe.linkLibC();
+    // exe.linkLibC();
 
     exe.root_module.addCMacro("CIMGUI_USE_GLFW", "");
     exe.root_module.addCMacro("CIMGUI_USE_OPENGL3", "");
