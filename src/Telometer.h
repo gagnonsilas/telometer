@@ -19,7 +19,7 @@
     packets(PACKET_STRUCT, name)                                               \
   };                                                                           \
   constexpr size_t name##PacketCount =                                         \
-      sizeof(TelemetryPackets) / sizeof(TelometerData);
+      sizeof(name##Packets) / sizeof(TelometerData);
 
 enum TelometerPacketState {
   TelometerSent,
