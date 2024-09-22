@@ -1,8 +1,6 @@
 const std = @import("std");
 const c = @cImport({
     @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", {});
-    @cDefine("CIMGUI_USE_GLFW", {});
-    @cDefine("CIMGUI_USE_OPENGL3", {});
     @cInclude("cimgui.h");
     @cInclude("cimgui_impl.h");
     @cInclude("cimplot.h");
@@ -23,10 +21,7 @@ pub fn main() !void {
     c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 3);
     c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    // tmp
-    c.glfwWindowHint(c.GLFW_RESIZABLE, c.GLFW_FALSE);
-
-    const window = c.glfwCreateWindow(800, 600, "zig!", null, null) orelse return error.GLFWCreateWindowFailed;
+    const window = c.glfwCreateWindow(800, 600, "Telometer Dashboard", null, null) orelse return error.GLFWCreateWindowFailed;
     defer c.glfwDestroyWindow(window);
 
     c.glfwMakeContextCurrent(window);
