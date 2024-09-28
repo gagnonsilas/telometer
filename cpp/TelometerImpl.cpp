@@ -5,9 +5,6 @@
 namespace Telometer {
 
 void init(TelometerInstance instance) {
-  for (unsigned int i = 0; i < instance.count; i++) {
-    instance.packetStruct[i].pointer = malloc(instance.packetStruct[i].size);
-  }
   instance.backend->init();
 }
 
@@ -23,13 +20,10 @@ void update(TelometerInstance instance) {
       continue;
     }
 
-    if (packet.size + sizeof(packetID) >
-        instance.backend->availableForWrite()) {
+    if(instance.backend->writePacket(packet)) {
       instance.nextPacket = currentId;
       break;
     }
-
-    instance.backend->writePacket(packet);
 
     packet.state = TelometerSent;
   }
@@ -55,7 +49,7 @@ void update(TelometerInstance instance) {
     packet.state = TelometerReceived;
   }
 
-  instance.backend->pdateEnd();
+  instance.backend->updateEnd();
 }
 
 // Log a value for a specific log ID
@@ -66,7 +60,6 @@ void sendValue(Data packet, void *data) {
 
 // Log a data pointer for a specific log ID
 void initPacket(Data packet, void *data) {
-  free(packet.pointer);
   packet.pointer = data;
   packet.state = TelometerQueued;
 }
