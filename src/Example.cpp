@@ -15,14 +15,18 @@ Telometer::TelometerInstance telemetry = {
 
 int main() {
   Telometer::init(telemetry);
+
+  static uint32_t pos = 50;
+  packets.robotPos.pointer = &pos;
+
+  while(true) {
+    pos++;
+    packets.robotPos.state = TelometerQueued;
+    Telometer::update(telemetry);
+  }
+  
   return 0;
 }
 
 void test() {
-  static uint32_t pos = 50;
-  packets.robotPos.pointer = &pos;
-
-  pos = 50;
-
-  packets.robotPos.state = TelometerQueued;
 }
