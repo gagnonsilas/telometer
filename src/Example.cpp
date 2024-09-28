@@ -1,25 +1,28 @@
 #include "Example.h"
 #include "../cpp/TelometerImpl.h"
-#include <iterator>
+#include "Telometer.h"
 
 
 struct TelemetryPackets packets;
 
-Telometer::TelometerInstance telemetry;
+Telometer::Backend *myBackend = new Telometer::Backend();
+
+Telometer::TelometerInstance telemetry = {
+  .backend  = myBackend,
+  .count = TelemetryPacketCount,
+  .packetStruct = (Telometer::Data*)&packets
+};
 
 int main() {
-  telemetry.backend->init();
+  Telometer::init(telemetry);
   return 0;
 }
 
 void test() {
-  packets.robotPos.pointer = 
+  static uint32_t pos = 50;
+  packets.robotPos.pointer = &pos;
 
-  telemetry.backend->
+  pos = 50;
 
-  Telometer::initPacket()
-
-  packets.robotPos.state = TelometerSent;
-  
-  
+  packets.robotPos.state = TelometerQueued;
 }

@@ -26,12 +26,11 @@ public:
 typedef struct TelometerInstance {
   Backend *backend;
   size_t count;
-  packetID nextPacket;
-  Data packetStruct[];
+  packetID nextPacket = 0;
+  Data *packetStruct;
 } TelometerInstance;
 
 void init(TelometerInstance instance);
-void initPacket(Data packet, void *data);
 void sendPacket(Data packet);
 void sendValue(Data packet, void *data);
 void debug(const char *string);
