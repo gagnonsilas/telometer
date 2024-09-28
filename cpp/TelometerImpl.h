@@ -12,16 +12,12 @@ typedef uint8_t packetID;
 
 class Backend {
 public:
-  void init();        // run after the main init
-  void updateBegin(); // run before update every loop
-  void updateEnd();   // run after update every loop
-  bool writePacket(Data data);
-  bool getNextID(uint8_t *id);
-  void read(uint8_t *buffer, unsigned int size);
-  void end();
+  virtual void update() = 0; // run after at the end of update every loop
+  virtual bool writePacket(Data data) = 0;
+  virtual bool getNextID(uint8_t *id) = 0;
+  virtual void read(uint8_t *buffer, unsigned int size) = 0;
+  virtual void end() = 0;
 };
-
-
 
 typedef struct TelometerInstance {
   Backend *backend;
