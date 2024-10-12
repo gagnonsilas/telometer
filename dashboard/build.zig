@@ -22,8 +22,7 @@ pub fn build(b: *std.Build) void {
 
     zig_imgui.linkLibC();
     zig_imgui.linkLibCpp();
-    zig_imgui.linkSystemLibrary("glfw");
-    zig_imgui.linkSystemLibrary("GL");
+    zig_imgui.linkSystemLibrary("SDL2");
 
     zig_imgui.root_module.addCMacro("IMGUI_DISABLE_OBSOLETE_FUNCTIONS", "1");
     zig_imgui.root_module.addCMacro("IMGUI_IMPL_API", "extern \"C\" ");
@@ -45,7 +44,7 @@ pub fn build(b: *std.Build) void {
             .root = imgui_dep.path("backends"),
             .files = &.{
                 "imgui_impl_opengl3.cpp",
-                "imgui_impl_glfw.cpp",
+                "imgui_impl_sdl2.cpp",
             },
         },
     );
@@ -115,11 +114,25 @@ pub fn build(b: *std.Build) void {
 
     // exe.linkLibC();
 
-    exe.root_module.addCMacro("CIMGUI_USE_GLFW", "");
+    // glad
+    const glad = b.addStaticLibrary(.{
+        .name = "glad",
+        .target = target,
+        .optimize = optimize,
+    });
+
+    glad.addIncludePath(b.path("glad/include"));
+    glad.addCSourceFiles(.{
+        .files = &.{"glad/src/glad.c"},
+    });
+
+    exe.addIncludePath(b.path("glad/include"));
+    exe.linkLibrary(glad);
+
+    exe.root_module.addCMacro("CIMGUI_USE_SDL2", "");
     exe.root_module.addCMacro("CIMGUI_USE_OPENGL3", "");
     exe.linkLibrary(zig_imgui);
-    exe.linkSystemLibrary("glfw");
-    exe.linkSystemLibrary("GL");
+    exe.linkSystemLibrary("SDL2");
 
     const run_cmd = b.addRunArtifact(exe);
 

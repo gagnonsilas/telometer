@@ -3,9 +3,7 @@ pkgs.mkShell {
   name = "imgui";
   buildInputs = with pkgs; [
     # libusb
-    # SDL2
-    glfw
-    glfw-wayland
+    SDL2
     pkg-config
     zig
     python311Packages.compiledb
