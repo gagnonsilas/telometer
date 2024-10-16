@@ -36,9 +36,7 @@ pub fn main() !void {
     io.*.ConfigFlags |= c.ImGuiConfigFlags_NavEnableKeyboard;
     io.*.ConfigFlags |= c.ImGuiConfigFlags_DockingEnable;
 
-    // const dejavu = @embedFile("fonts/DejavuSansMono-5m7L.ttf");
-
-    const dejavu = @embedFile("fonts/Slugs Racer.ttf");
+    const dejavu = @embedFile("fonts/DejavuSansMono-5m7L.ttf");
     _ = c.ImFontAtlas_AddFontFromMemoryTTF(io.*.Fonts, @constCast(@ptrCast(dejavu)), dejavu.len, 16, c.ImFontConfig_ImFontConfig(), null);
 
     c.igStyleColorsDark(null);
