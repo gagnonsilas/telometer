@@ -11,6 +11,8 @@ fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error {}: {s}\n", .{ err, desc });
 }
 
+// const testarr: [3] u8 = {1, 2, 3};
+
 pub fn main() !void {
     _ = c.glfwSetErrorCallback(glfwErrorCallback);
     if (c.glfwInit() == 0) {
@@ -32,6 +34,12 @@ pub fn main() !void {
 
     const io = c.igGetIO();
     io.*.ConfigFlags |= c.ImGuiConfigFlags_NavEnableKeyboard;
+    io.*.ConfigFlags |= c.ImGuiConfigFlags_DockingEnable;
+
+    // const dejavu = @embedFile("fonts/DejavuSansMono-5m7L.ttf");
+
+    const dejavu = @embedFile("fonts/Slugs Racer.ttf");
+    _ = c.ImFontAtlas_AddFontFromMemoryTTF(io.*.Fonts, @constCast(@ptrCast(dejavu)), dejavu.len, 16, c.ImFontConfig_ImFontConfig(), null);
 
     c.igStyleColorsDark(null);
 
@@ -54,6 +62,14 @@ pub fn main() !void {
         c.ImGui_ImplOpenGL3_NewFrame();
         c.ImGui_ImplGlfw_NewFrame();
         c.igNewFrame();
+
+        _ = c.igDockSpaceOverViewport(0, null, 0, c.ImGuiWindowClass_ImGuiWindowClass());
+
+        var thing: bool = true;
+        if (c.igBegin("test", @ptrCast(&thing), 0)) {}
+        c.igEnd();
+
+        c.igShowDemoWindow(@ptrCast(&thing));
 
         c.igRender();
         var width: c_int = undefined;
