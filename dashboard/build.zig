@@ -11,6 +11,7 @@ pub fn build(b: *std.Build) void {
     const implot_dep = b.dependency("implot", .{});
     const cimgui_dep = b.dependency("cimgui", .{});
     const cimplot_dep = b.dependency("cimplot", .{});
+    const telometer_dep = b.dependency("telometer", .{ .target = target, .optimize = optimize });
 
     const zig_imgui = b.addStaticLibrary(.{
         .name = "zig-imgui",
@@ -111,9 +112,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    b.installArtifact(exe);
+    exe.root_module.addImport("telometer", telometer_dep.module("Telometer"));
+    exe.linkLibrary(telometer_dep.artifact("Telometer"));
 
-    // exe.linkLibC();
+    b.installArtifact(exe);
 
     exe.root_module.addCMacro("CIMGUI_USE_GLFW", "");
     exe.root_module.addCMacro("CIMGUI_USE_OPENGL3", "");

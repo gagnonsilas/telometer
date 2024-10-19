@@ -6,6 +6,7 @@ const c = @cImport({
     @cInclude("cimplot.h");
     @cInclude("GLFW/glfw3.h");
 });
+const tm = @import("telometer");
 
 fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error {}: {s}\n", .{ err, desc });

@@ -39,6 +39,9 @@
             .url = "git+https://github.com/epezent/implot#f156599faefe316f7dd20fe6c783bf87c8bb6fd9",
             .hash = "1220ea199cadbb875be69fffeae45bb844577d1353a941690d09d658bd2ea4c371fc",
         },
+        .telometer = .{
+            .path = "../zig",
+        },
     },
     .paths = .{
         "build.zig",
