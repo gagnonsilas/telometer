@@ -24,7 +24,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    _ = b.addModule("Telometer", .{
+    const module = b.addModule("Telometer", .{
         // In this case the main source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
         .root_source_file = b.path("src/Telometer.zig"),
@@ -32,7 +32,23 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    lib.addIncludePath(b.path("../src/Telometer.h"));
+    const telometer = b.addStaticLibrary(.{
+        .name = "telometer",
+        .target = target,
+        .optimize = optimize,
+    });
+
+    telometer.addIncludePath(b.path("../src"));
+    telometer.addCSourceFiles(.{
+        .root = b.path("../src"),
+        .files = &.{"Telometer.c"},
+    });
+    telometer.linkLibC();
+
+    lib.addIncludePath(b.path("../src"));
+    // lib.linkLibrary(telometer);
+    // module.addIncludePath(b.path("../src"));
+    _ = module;
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when

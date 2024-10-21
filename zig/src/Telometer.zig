@@ -3,8 +3,8 @@ const telometer = @cImport({
     @cInclude("Telometer.h");
 });
 
-const PacketState = telometer.TelometerPacketState;
-const Data = telometer.TelometerData;
+pub const PacketState = telometer.TelometerPacketState;
+pub const Data = telometer.TelometerData;
 
 pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) type {
     return struct {

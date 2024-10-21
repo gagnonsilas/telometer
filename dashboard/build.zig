@@ -113,7 +113,7 @@ pub fn build(b: *std.Build) void {
 
     exe.root_module.addImport("telometer", telometer_dep.module("Telometer"));
     exe.linkLibrary(telometer_dep.artifact("Telometer"));
-
+    exe.addIncludePath(b.path("../src/")); // @TEMP
     b.installArtifact(exe);
 
     // glad
@@ -132,6 +132,7 @@ pub fn build(b: *std.Build) void {
 
     exe.addIncludePath(b.path("glad/include"));
     exe.linkLibrary(glad);
+    exe.addIncludePath(b.path("../src/Example.h"));
 
     exe.root_module.addCMacro("CIMGUI_USE_SDL2", "");
     exe.root_module.addCMacro("CIMGUI_USE_OPENGL3", "");

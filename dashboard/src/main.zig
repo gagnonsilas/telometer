@@ -8,12 +8,22 @@ const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
 const tm = @import("telometer");
+const udp = @import("udp.zig");
+
+const telemetry = @cImport({
+    @cInclude("Example.h");
+});
 
 fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error {}: {s}\n", .{ err, desc });
 }
 
-// const testarr: [3] u8 = {1, 2, 3};
+const PORT = 62895;
+const backend = udp.UDPBackend(PORT, tm.Data);
+
+const instance = tm.TelometerInstance(backend, telemetry.TelemetryPackets);
+
+pub fn dispValues() void {}
 
 pub fn main() !void {
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
@@ -31,7 +41,7 @@ pub fn main() !void {
         return error.FailedToSetGLVersion;
     }
 
-    const window = c.SDL_CreateWindow("Telometer Dashboard", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 800, 600, c.SDL_WINDOW_OPENGL) orelse return error.GLFWCreateWindowFailed;
+    const window = c.SDL_CreateWindow("Telometer Dashboard", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 800, 600, c.SDL_WINDOW_OPENGL | c.SDL_WINDOW_RESIZABLE) orelse return error.GLFWCreateWindowFailed;
     defer c.SDL_DestroyWindow(window);
 
     const gl_context = c.SDL_GL_CreateContext(window);
@@ -66,6 +76,8 @@ pub fn main() !void {
 
     const clear_color = c.ImVec4{ .x = 0.45, .y = 0.55, .z = 0.60, .w = 1.00 };
 
+    backend.openUDPSocket();
+
     var running: bool = true;
     while (running) {
         var event: c.SDL_Event = undefined;
@@ -96,6 +108,8 @@ pub fn main() !void {
             }
         }
         c.igEnd();
+
+        backend.readNextUDPPacket();
 
         c.igRender();
         var width: c_int = undefined;
