@@ -15,15 +15,6 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary(.{
-        .name = "Telometer",
-        // In this case the main source file is merely a path, however, in more
-        // complicated build scripts, this could be a generated file.
-        .root_source_file = b.path("src/Telometer.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
     const module = b.addModule("Telometer", .{
         // In this case the main source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
@@ -31,43 +22,5 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-
-    const telometer = b.addStaticLibrary(.{
-        .name = "telometer",
-        .target = target,
-        .optimize = optimize,
-    });
-
-    telometer.addIncludePath(b.path("../src"));
-    telometer.addCSourceFiles(.{
-        .root = b.path("../src"),
-        .files = &.{"Telometer.c"},
-    });
-    telometer.linkLibC();
-
-    lib.addIncludePath(b.path("../src"));
-    // lib.linkLibrary(telometer);
-    // module.addIncludePath(b.path("../src"));
-    _ = module;
-
-    // This declares intent for the library to be installed into the standard
-    // location when the user invokes the "install" step (the default step when
-    // running `zig build`).
-    b.installArtifact(lib);
-
-    // Creates a step for unit testing. This only builds the test executable
-    // but does not run it.
-    const lib_unit_tests = b.addTest(.{
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
-
-    // Similar to creating the run step earlier, this exposes a `test` step to
-    // the `zig build --help` menu, providing a way for the user to request
-    // running the unit tests.
-    const test_step = b.step("test", "Run unit tests");
-    test_step.dependOn(&run_lib_unit_tests.step);
+    module.addIncludePath(b.path("../src"));
 }
