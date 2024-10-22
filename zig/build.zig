@@ -46,9 +46,8 @@ pub fn build(b: *std.Build) void {
     telometer.linkLibC();
 
     lib.addIncludePath(b.path("../src"));
-    // lib.linkLibrary(telometer);
-    // module.addIncludePath(b.path("../src"));
-    _ = module;
+    lib.linkLibrary(telometer);
+    module.addIncludePath(b.path("../src"));
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when

@@ -19,7 +19,6 @@ public:
   void end() override;
 
 private:
-  int next_packet = 0;
   int udpSocket;
   int port;
 

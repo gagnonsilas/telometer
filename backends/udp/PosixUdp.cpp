@@ -25,9 +25,11 @@ void PosixUdpBackend::readNextUDPPacket() {
 }
 
 void PosixUdpBackend::update() {
-
-  sendto(udpSocket, (const char *)writeBuffer, writePointer, 0,
-         (const struct sockaddr *)&servaddr, sizeof(servaddr));
+  if(writePointer > 0) {
+    sendto(udpSocket, (const char *)writeBuffer, writePointer, 0,
+           (const struct sockaddr *)&servaddr, sizeof(servaddr));
+    writePointer = 0;
+  }
   readNextUDPPacket();
 }
 

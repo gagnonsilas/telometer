@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
+#include <stddef.h>
+#include <stdint.h>
 
 #define PACKET_TYPE_FORMAT(namespace, t, ...) t##namespace##Packet,
 
@@ -18,8 +18,7 @@
   struct name##Packets {                                                       \
     packets(PACKET_STRUCT, name)                                               \
   };                                                                           \
-  constexpr size_t name##PacketCount =                                         \
-      sizeof(name##Packets) / sizeof(TelometerData);
+  size_t name##PacketCount =  sizeof(name##Packets) / sizeof(TelometerData);
 
 enum TelometerPacketState {
   TelometerSent,
@@ -32,5 +31,5 @@ struct TelometerData {
   void *pointer;
   uint8_t type;
   size_t size;
-  TelometerPacketState state;
+  enum TelometerPacketState state;
 };

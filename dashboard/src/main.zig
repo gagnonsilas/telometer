@@ -19,7 +19,7 @@ fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
 }
 
 const PORT = 62895;
-const backend = udp.UDPBackend(PORT, tm.Data);
+var backend = udp.UDPBackend(tm.Data).init();
 
 const instance = tm.TelometerInstance(backend, telemetry.TelemetryPackets);
 
@@ -76,7 +76,7 @@ pub fn main() !void {
 
     const clear_color = c.ImVec4{ .x = 0.45, .y = 0.55, .z = 0.60, .w = 1.00 };
 
-    backend.openUDPSocket();
+    try backend.openUDPSocket(PORT);
 
     var running: bool = true;
     while (running) {
