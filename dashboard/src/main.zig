@@ -41,7 +41,7 @@ pub fn main() !void {
         return error.FailedToSetGLVersion;
     }
 
-    const window = c.SDL_CreateWindow("Telometer Dashboard", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 800, 600, c.SDL_WINDOW_OPENGL | c.SDL_WINDOW_RESIZABLE) orelse return error.GLFWCreateWindowFailed;
+    const window = c.SDL_CreateWindow("Telometer Dashboard", c.SDL_WINDOWPOS_UNDEFINED, c.SDL_WINDOWPOS_UNDEFINED, 800, 600, c.SDL_WINDOW_OPENGL | c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_ALLOW_HIGHDPI) orelse return error.GLFWCreateWindowFailed;
     defer c.SDL_DestroyWindow(window);
 
     const gl_context = c.SDL_GL_CreateContext(window);
