@@ -23,28 +23,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const telometer = b.addStaticLibrary(.{
-        .name = "telometer",
-        .target = target,
-        .optimize = optimize,
-    });
-
-    telometer.addIncludePath(b.path("../src"));
-    telometer.addCSourceFiles(.{
-        .root = b.path("../src"),
-        .files = &.{"Telometer.c"},
-    });
-    telometer.linkLibC();
-
-    // lib.addIncludePath(b.path("../src"));
-    // lib.linkLibrary(telometer);
-    module.addIncludePath(b.path("../src"));
-
-    // This declares intent for the library to be installed into the standard
-    // location when the user invokes the "install" step (the default step when
-    // running `zig build`).
-    // b.installArtifact(lib);
-
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
     const lib_unit_tests = b.addTest(.{
