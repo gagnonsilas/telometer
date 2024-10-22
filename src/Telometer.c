@@ -1,2 +1,2 @@
 #define TELOMETER_IMPLEMENTATION
-#include "Telometer.h"
+#include <Telometer.h>

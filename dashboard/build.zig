@@ -110,10 +110,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-
     exe.root_module.addImport("telometer", telometer_dep.module("Telometer"));
     exe.linkLibrary(telometer_dep.artifact("Telometer"));
-
     b.installArtifact(exe);
 
     // glad
