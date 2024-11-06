@@ -1,57 +1,21 @@
 #pragma once
-#include "MathUtils.h"
+// #include "MathUtils.h"
 
 
 #include <stdint.h>
 
 #define PACKETS(X) \
 X(robotEnabled, uint16_t)\
-X(loopTime, uint16_t)\
-X(voltage, uint16_t)\
-X(position, vec2f)\
-X(heading, angle)\
-X(targetPathPoint, vec2f)\
-X(targetAngle, angle)\
-X(lineP, float)\
-X(wheelVels, vec2f)\
-X(motorsVolt, vec2f)\
-X(drivetrainState, uint16_t)\
-X(urfDistance, uint16_t)\
-X(lineSpeed, float)\
-X(imuAngleVel, vec3f)\
-X(imuCalibration, uint16_t)\
-X(imuAcceleration, vec3i16)\
-X(gravity, vec3f)\
-X(pitchAngle, angle)\
-X(aprilTagID, int16_t)\
-X(tagRotation, float)    \
-X(lineMult, float) \
-X(lineThresh, float)  \
-X(lineDist, float) \
-X(turnP, float)    \
-X(currentMazeState, uint16_t) \
-X(nearestLine, vec2f)\
-X(lineSensorEstimatedHeading, angle)\
-X(lineSensorRaw, vec6f)\
-X(linePercievedWidth, float)\
-X(passCode, uint32_t)\
-X(doorLoc, uint32_t)\
-X(path, pathPoints)\
+X(loopTime, float)\
+X(cos, float)\
+X(sin, float)\
+X(fxcool, float)\
 
 #define PACKET_TYPES(X) \
 X(uint16_t)\
 X(int16_t)\
 X(float)\
-X(vec2f)\
-X(vec2i)\
-X(vec2i16)\
-X(vec3i)\
-X(vec3f)\
-X(vec3i16)\
-X(angle)\
-X(vec6f)\
 X(uint32_t)\
-X(pathPoints)\
 
 #define PACKET_TYPE_FORMAT(t) t##_packet,
 #define UNION(type) type type##_packet;
@@ -65,14 +29,7 @@ X(pathPoints)\
 void handle_##t(t packet);
 
 // because vec2<float>_packet wouldn't work
-typedef vec2<float> vec2f;
-typedef vec3<float> vec3f;
-
-typedef vec2<int16_t> vec2i16;
-typedef vec3<int16_t> vec3i16;
-
-typedef vec2<int> vec2i;
-typedef vec3<int> vec3i;
+typedef struct{ float x, y; } vec2f;
 
 typedef struct vec6f { float vec[6];} vec6f;
 typedef struct pathPoints { vec2f points[3];} pathPoints;

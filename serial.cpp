@@ -1,4 +1,4 @@
-#include "Romote.h"
+#include "Telemetry.h"
 
 // #include <bits/types/FILE.h>
 #include <cstdint>
@@ -15,10 +15,9 @@ int next_packet = 0;
 
 int serial;
 
-
 struct pollfd poll_struct;
 
-namespace Romote {
+namespace Telemetry {
 
   void backendUpdateBegin(){
     

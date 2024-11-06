@@ -82,7 +82,7 @@ void lineSensorPlot(struct LivePlot *plot){
 
     float linePos[6] = {0, 1, 2, 3, 4, 5};
     float lineData[6] = {}; 
-    memcpy(lineData, Telometer::data_values[Telometer::lineSensorRaw], sizeof(lineData));
+    // memcpy(lineData, Telometer::data_values[Telometer::lineSensorRaw], sizeof(lineData));
 
     ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle);
     ImPlot::PlotLine(
@@ -134,19 +134,9 @@ void create_plot(struct LivePlot *plot) {
             case Telometer::float_packet:
               new_val = *(float*) Telometer::data_values[i];
               break;
-            case Telometer::angle_packet:
-              new_val = MathUtils::getRadians(*(angle*)Telometer::data_values[i]);
-              break;
-            case Telometer::vec2f_packet:
-              new_val = *(float*)  Telometer::data_values[i];
-              break;
-            case Telometer::vec3i16_packet:
-              new_val = (float)*(int*)Telometer::data_values[i];
-            case Telometer::vec3f_packet:
-              new_val = *(float*)Telometer::data_values[i];
-              break;
+
             default:
-             break;
+              break;
           }
           plot->buffers[i].AddPoint(plot->time, new_val);
         }
@@ -206,7 +196,7 @@ void displayFloatVec(const char* label, float* v, int len) {
 
 
 ImVec2 to_screen_coords(vec2<float> vec, ImVec2 start, ImVec2 size, float sf){
-  return {vec.x * sf + start.x, (start.y + size.y) - vec.y * sf};
+  return {vec.x * sf + start.x + size.x / 2, (start.y + size.y / 2) - vec.y * sf};
 }
 
 void drawRobot(ImDrawList *draw_list, vec2<float> robotPos, angle robotHeading, float robotSize, float line_thickness, ImVec2 start, ImVec2 size, float sf, ImU32 color) {
@@ -220,15 +210,11 @@ void drawRobot(ImDrawList *draw_list, vec2<float> robotPos, angle robotHeading, 
 
 
 void plot_field(const char* name) {
-  static const float field_x = GRID_SPACING * 6;
-  static const float field_y = GRID_SPACING * 3;
-  static const float robot_size = 16.3 / 2.0; //cm
+  static const float field_x = 1;
+  static const float field_y = 1;
 
 
-  vec2<float> robot_pos = *(vec2<float>*) Telometer::data_values[Telometer::position];
-  angle robot_heading = *(angle*)Telometer::data_values[Telometer::heading];
-
-  if(!ImGui::Begin("Field")) {
+  if(!ImGui::Begin("X, Y")) {
     ImGui::End();
     return;
   };
@@ -238,99 +224,44 @@ void plot_field(const char* name) {
   ImVec2 start = ImGui::GetCursorScreenPos();
   ImVec2 field_max = ImGui::GetContentRegionAvail();
   float sf;
-  float line_thickness = 1; //cm 
+  float line_thickness = 0.03; //cm 
 
 
   if(field_max.x * field_y / field_x < field_max.y) {
-    sf = field_max.x / field_x; 
+    sf = field_max.x / (field_x * 2); 
     start.y = start.y + (field_max.y - field_y * sf) / 2;
   }
   else {
-    sf = field_max.y / field_y;
+    sf = field_max.y / (field_y * 2);
     start.x = start.x + (field_max.x - field_x * sf) / 2;
   }
 
-  ImVec2 size = {field_x * sf, field_y * sf};
+  ImVec2 size = {field_x * 2 * sf, field_y * sf * 2};
   
-  draw_list->AddRectFilled({start}, {start.x + field_x * sf, start.y + field_y *sf}, IM_COL32(50, 50, 50, 100));
-  for(int i = 0; i < 3; i ++) {
-    draw_list->AddLine(to_screen_coords({0, (float)(20 + i * GRID_SPACING)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * GRID_SPACING)}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
-  }
-  for(int i = 0; i < 6; i ++) {
-    draw_list->AddLine(to_screen_coords({(float)(20 + i * GRID_SPACING), 0}, start, size, sf), to_screen_coords({(float)(20 + i * GRID_SPACING), field_y}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
-  }
-
-  drawRobot(draw_list, robot_pos, robot_heading, robot_size, line_thickness, start, size, sf, IM_COL32(255, 0, 255, 255));
-  
-  draw_list->AddCircle(to_screen_coords(*(vec2<float>*)Telemetry::getValue(Telemetry::targetPathPoint), start, size, sf), 2 * sf, IM_COL32(29, 245, 187, 255* receivedUpdateDecay[Telemetry::targetPathPoint]), 0, line_thickness * sf);
-
-  constexpr int count = 1000;
-  static vec2<float> urfTracing[count] = {};
-  static int bufferPointer = 0;
-  urfTracing[bufferPointer] = robot_pos + (robot_heading.angle * (*(uint16_t*)Telemetry::getValue(Telemetry::urfDistance) / 10.0 + 5));
-
-  for(int i = 0; i < count; i ++) {
-    float fade = (float)((i - bufferPointer) % count) / count;
-
-    draw_list->AddCircleFilled(to_screen_coords(urfTracing[i], start, size, sf), 1 * sf, IM_COL32(255, 255, 255, 150* fade), 0);
-
-  }
-  bufferPointer ++;
-  bufferPointer = bufferPointer % count;
-
-  // Mapping::Maze testMaze = *(Mapping::Maze*)Telometer::getValue(Telometer::currentMaze);
-  // for(int i = 0; i < 4; i ++ ) {
-  //   for(int j = 0; j < 7; j ++) {
-  //     Mapping::Cell cell = testMaze.map[i][j];
-  //     vec2<float> p1, p2, p3;
-  //     p1 = {static_cast<float>((j+1) * GRID_SPACING), static_cast<float>(i * GRID_SPACING)};
-  //     p2 = {static_cast<float>(j * GRID_SPACING), static_cast<float>(i * GRID_SPACING)};
-  //     p3 = {static_cast<float>(j * GRID_SPACING), static_cast<float>((i+1) * GRID_SPACING)};
-
-  //     switch (cell.leftWall) {
-  //       case Mapping::closed:
-  //         draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(212, 40, 75, 255));
-  //       case Mapping::unexplored:
-  //         draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(50, 170, 212, 150));
-  //       case Mapping::open:
-  //         draw_list->AddLine(to_screen_coords(p1, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(40, 212, 90, 255));
-  //     }
-  //     switch (cell.topWall) {
-  //       case Mapping::closed:
-  //         draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(212, 40, 75, 255));
-  //       case Mapping::unexplored:
-  //         draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(50, 170, 212, 150));
-  //       case Mapping::open:
-  //         draw_list->AddLine(to_screen_coords(p3, start, size, sf), to_screen_coords(p2, start, size, sf), IM_COL32(40, 212, 90, 255));
-  //     }
-  //   }
+  draw_list->AddRectFilled({start}, {start.x + size.x, start.y + size.y}, IM_COL32(50, 50, 50, 100));
+  // for(int i = 0; i < 3; i ++) {
+  //   draw_list->AddLine(to_screen_coords({0, (float)(20 + i * GRID_SPACING)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * GRID_SPACING)}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
+  // }
+  // for(int i = 0; i < 6; i ++) {
+  //   draw_list->AddLine(to_screen_coords({(float)(20 + i * GRID_SPACING), 0}, start, size, sf), to_screen_coords({(float)(20 + i * GRID_SPACING), field_y}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
   // }
 
-  for(int i = 0; i < 2; i ++) {
-    draw_list->AddLine(to_screen_coords(((vec2<float>*)Telemetry::getValue(Telemetry::path))[i], start, size, sf), to_screen_coords(((vec2<float>*)Telemetry::getValue(Telemetry::path))[i+1], start, size, sf), IM_COL32(255, 20, 90, 255), 1 * sf);
-  }
-
-  static angle *estimatedHeading = (angle*)Telemetry::getValue(Telemetry::lineSensorEstimatedHeading);
-  vec2<float> lineSensorPos = *(vec2<float>*)Telometer::data_values[Telometer::nearestLine] + (robot_pos + robot_heading.angle * 7);
-  // vec2<float> lineSensorPos = (robot_pos + robot_heading.angle * 7) + closestLine(robot_pos + robot_heading.angle * 7, robot_heading + *estimatedHeading);
   
-  draw_list->AddCircle(to_screen_coords(lineSensorPos, start, size, sf), 2 * sf, IM_COL32(0, 125, 255, 255), 0, line_thickness * sf);
+  draw_list->AddCircle(to_screen_coords((vec2<float>){.x = *(float*)Telemetry::getValue(Telemetry::cos),.y =*(float*)Telemetry::getValue(Telemetry::sin)}, start, size, sf), 0.01 * sf, IM_COL32(29, 245, 187, 255), 0, line_thickness * sf);
 
-  vec2<float> estimateRobotPos = lineSensorPos - estimatedHeading->angle * 8;
-  drawRobot(draw_list, estimateRobotPos, *estimatedHeading, robot_size, line_thickness, start, size, sf, IM_COL32(50, 205, 50, 150 * receivedUpdateDecay[Telemetry::lineSensorEstimatedHeading]));
+  // constexpr int count = 1000;
+  // static vec2<float> urfTracing[count] = {};
+  // static int bufferPointer = 0;
+  // // urfTracing[bufferPointer] = robot_pos + (robot_heading.angle * (*(uint16_t*)Telemetry::getValue(Telemetry::urfDistance) / 10.0 + 5));
 
-  
-  // ImPlot::Draw
-  // ImPlot::Plot("Robot", );
+  // for(int i = 0; i < count; i ++) {
+  //   float fade = (float)((i - bufferPointer) % count) / count;
 
-  // for(int i = 0; i < packetIdsCount; i++) {
-  //   ImGui::Checkbox(packet_id_names[i], &(plots[i]));
-  //   if(plots[i]) {
-  //   }
+  //   draw_list->AddCircleFilled(to_screen_coords(urfTracing[i], start, size, sf), 1 * sf, IM_COL32(255, 255, 255, 150* fade), 0);
+
   // }
-
-  draw_list->AddDrawCmd();
-  
+  // bufferPointer ++;
+  // bufferPointer = bufferPointer % count;
 
   ImGui::End();
 }
@@ -374,53 +305,7 @@ void update() {
           if(ImGui::DragFloat(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 0.01, 0.0001, 1))
             Telometer::sendPacket((Telometer::packet_id)i);
           break;
-        case Telometer::angle_packet:
-          temp_angle = MathUtils::getDegrees(*(angle*)Telometer::data_values[i]);
-          if(ImGui::DragFloat(Telometer::packet_id_names[i], &temp_angle)) {
-            *(angle*)Telometer::data_values[i] = MathUtils::angleFromDegrees(temp_angle);
-            Telometer::sendPacket((Telometer::packet_id)i);
-          }
-          break;
-        case Telometer::vec2f_packet:
-          if(ImGui::DragFloat2(Telometer::packet_id_names[i], (float*)Telometer::data_values[i]))
-            Telometer::sendPacket((Telometer::packet_id)i);
-          break;
-        case Telometer::vec3f_packet:
-          if(ImGui::DragFloat3(Telometer::packet_id_names[i], (float*)Telometer::data_values[i]))
-            Telometer::sendPacket((Telometer::packet_id)i);
-          break;
-        case Telometer::vec3i16_packet: {
-          int vec3i16_temp[3]; 
-          vec3i16_temp[0] = ((int16_t*)Telometer::data_values[i])[0];
-          vec3i16_temp[1] = ((int16_t*)Telometer::data_values[i])[1];
-          vec3i16_temp[2] = ((int16_t*)Telometer::data_values[i])[2];
-
-          if(ImGui::InputInt3(Telometer::packet_id_names[i], &vec3i16_temp[0]))
-            Telometer::sendPacket((Telometer::packet_id)i);
-           (*(vec3<int16_t>*)Telometer::data_values[i]).x = vec3i16_temp[0];
-           (*(vec3<int16_t>*)Telometer::data_values[i]).y = vec3i16_temp[1];
-           (*(vec3<int16_t>*)Telometer::data_values[i]).z = vec3i16_temp[2];
-          }
-          break;
-        case Telometer::vec2i16_packet: {
-          int vec2i16_temp[2]; 
-          vec2i16_temp[0] = (*(vec2<int16_t>*)Telometer::data_values[i]).x;
-          vec2i16_temp[1] = (*(vec2<int16_t>*)Telometer::data_values[i]).y;
-
-          if(ImGui::InputInt2(Telometer::packet_id_names[i], &vec2i16_temp[0])) {
-            (*(vec2<int16_t>*)Telometer::data_values[i]).x = vec2i16_temp[0];
-            (*(vec2<int16_t>*)Telometer::data_values[i]).y = vec2i16_temp[1];
-            
-            Telometer::sendPacket((Telometer::packet_id)i);
-          }
-          }
-          break;
-        case Telometer::vec6f_packet: {
-          displayFloatVec(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 6);
-          // ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
-          }
-          break;
-        case Telometer::uint32_t_packet: {
+       case Telometer::uint32_t_packet: {
           // displayFloatVec(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 6);
           ImGui::Text("%c, %c, %c", ((char*)Telometer::data_values[i])[0],((char*)Telometer::data_values[i])[1], ((char*)Telometer::data_values[i])[2]);
           // ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
@@ -443,10 +328,10 @@ void update() {
   }
   ImGui::End();
 
-  if(ImGui::Begin("Line Sensor")) {
-    lineSensorPlot(&lineSensorGraph);
-  }
-  ImGui::End();
+  // if(ImGui::Begin("Line Sensor")) {
+  //   lineSensorPlot(&lineSensorGraph);
+  // }
+  // ImGui::End();
 
   if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Space))) {
     *(int16_t*)Telometer::data_values[Telometer::robotEnabled] = 0;
@@ -468,24 +353,8 @@ void update() {
     Telometer::sendPacket(Telometer::robotEnabled);
   }
 
-  const int speed = 2;
-  const int turnSpeed = 1;
-
-  static vec2<float> *volts = (vec2<float>*) Telometer::data_values[Telometer::motorsVolt];
-
-  float forward = speed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_W)) - speed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_R));
-  float turn = turnSpeed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_A)) - turnSpeed * ImGui::IsKeyDown(ImGui::GetKeyIndex(ImGuiKey_S));
-
-  if(forward || turn) {
-    *volts = {forward - turn,forward +  turn};
-  }
-  else  {
-    *volts = {0, 0};
-  }
-
-  Telometer::sendPacket(Telometer::motorsVolt);
-
   plot_field("field");
+
 }
 
 
