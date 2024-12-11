@@ -218,8 +218,16 @@ void drawRobot(ImDrawList *draw_list, vec2<float> robotPos, angle robotHeading, 
 
 
 void plot_field(const char* name) {
-  static const float field_x = 1;
-  static const float field_y = 1;
+  static const float field_x = 200;
+  static const float field_y = 100;
+
+  // static const float field_x = GRID_SPACING * 6;
+  // static const float field_y = GRID_SPACING * 3;
+  static const float robot_size = 5; //cm
+
+
+  vec2<float> robot_pos = *(vec2<float>*) Telometer::data_values[Telometer::position];
+  angle robot_heading = *(angle*)Telometer::data_values[Telometer::heading];
 
 
   if(!ImGui::Begin("X, Y")) {
@@ -232,31 +240,32 @@ void plot_field(const char* name) {
   ImVec2 start = ImGui::GetCursorScreenPos();
   ImVec2 field_max = ImGui::GetContentRegionAvail();
   float sf;
-  float line_thickness = 0.03; //cm 
+  float line_thickness = 1; //cm 
 
 
   if(field_max.x * field_y / field_x < field_max.y) {
-    sf = field_max.x / (field_x * 2); 
+    sf = field_max.x / (field_x); 
     start.y = start.y + (field_max.y - field_y * sf) / 2;
   }
   else {
-    sf = field_max.y / (field_y * 2);
+    sf = field_max.y / (field_y);
     start.x = start.x + (field_max.x - field_x * sf) / 2;
   }
 
-  ImVec2 size = {field_x * 2 * sf, field_y * sf * 2};
+  ImVec2 size = {field_x * sf, field_y * sf};
   
   draw_list->AddRectFilled({start}, {start.x + size.x, start.y + size.y}, IM_COL32(50, 50, 50, 100));
-  for(int i = 0; i < 3; i ++) {
-    draw_list->AddLine(to_screen_coords({0, (float)(20 + i * GRID_SPACING)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * GRID_SPACING)}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
-  }
-  for(int i = 0; i < 6; i ++) {
-    draw_list->AddLine(to_screen_coords({(float)(20 + i * GRID_SPACING), 0}, start, size, sf), to_screen_coords({(float)(20 + i * GRID_SPACING), field_y}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
-  }
+  // for(int i = 0; i < 3; i ++) {
+  //   draw_list->AddLine(to_screen_coords({0, (float)(20 + i * GRID_SPACING)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * GRID_SPACING)}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
+  // }
+  // for(int i = 0; i < 6; i ++) {
+  //   draw_list->AddLine(to_screen_coords({(float)(20 + i * GRID_SPACING), 0}, start, size, sf), to_screen_coords({(float)(20 + i * GRID_SPACING), field_y}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
+  // }
 
   
   draw_list->AddCircle(to_screen_coords((vec2<float>){.x = *(float*)Telemetry::getValue(Telemetry::cos),.y =*(float*)Telemetry::getValue(Telemetry::sin)}, start, size, sf), 0.01 * sf, IM_COL32(29, 245, 187, 255), 0, line_thickness * sf);
 
+  drawRobot(draw_list, robot_pos, robot_heading, robot_size, line_thickness, start, size, sf, IM_COL32(255, 0, 255, 255));
   // constexpr int count = 1000;
   // static vec2<float> urfTracing[count] = {};
   // static int bufferPointer = 0;
