@@ -62,18 +62,38 @@ namespace Telemetry {
 
   void read (uint8_t *buffer, unsigned int size) {
     ::read(serial, buffer, size);
-    // for(int i = 0; i < size / 2; i++) {
-    //   printf(" %hu", *((int16_t*)&buffer[i*2]));
+    // for(int i = 0; i < size; i++) {
+    //   printf(" %hu", *((uint8_t*)&buffer[i]));
     // }
     // printf("\n");
   }
 
   bool getNextHeader(packetHeader *header) {
-    if(available() < sizeof(packetHeader))
-      return false;
+    static packetHeader lastHeader; 
+    static bool splitLastPacket = false;
+    
+    if(!splitLastPacket) {
+      if(available() < sizeof(packetHeader)) {
+        return false;
+      }
 
-    read((uint8_t*)header, sizeof(packetHeader));
-    // printf("header: %i | ", header->id);
+      read((uint8_t*)&lastHeader, sizeof(packetHeader));
+
+      if(lastHeader.id > Telemetry::packetIdsCount) {
+        uint8_t a = 0;
+        read(&a, 1);
+        return false;
+      }
+    }
+   
+
+    if(available() < dataSize(lastHeader.id)){
+      splitLastPacket = true;
+      return false;
+    }
+
+    splitLastPacket = false;
+    *header = lastHeader;
     return true;
   }
 

@@ -1,4 +1,5 @@
 #include "Telemetry.h"
+#include <cstdio>
 
 namespace Telemetry {  
 
@@ -83,16 +84,25 @@ namespace Telemetry {
 read:
     packetHeader header; 
     while(getNextHeader(&header)) { // Read incoming serial data and update corresponding packets
-      // debug("test2\n");
       if(header.id >= packetIdsCount || header.FFFF != PACKET_ALIGNMENT) {
-        debug("invalid header\n");
+        debug("invalid header: ");
+        printf("%i, %i", header.id, header.FFFF);
         continue;
       }
+      // debug("header: ");
+      // printf("%i, %i\n", header.id, header.FFFF);
+      // printf("-");
 
       uint8_t buffer[dataSize(header.id)];
 
       read((uint8_t*)&buffer, dataSize(header.id));
-      
+
+
+      // for(int i = 0; i < dataSize(header.id); i ++) {
+      //   printf("%c, ", buffer[i]);
+      // }
+      // printf("\n");
+
       copy(data_values[header.id], buffer, dataSize(header.id));
       receivedUpdates[header.id] = 1;
     }

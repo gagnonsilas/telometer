@@ -9,7 +9,10 @@
 #include <SDL_opengl.h>
 #include <csignal>
 #include <cstdio>
+#include <fcntl.h>
 #include <unistd.h>
+#include <stdio.h>
+
 
 #define Telometer Telemetry
 
@@ -25,11 +28,12 @@ struct ScrollingBuffer {
     int MaxSize;
     int Offset;
     ImVector<ImVec2> Data;
-    ScrollingBuffer(int max_size = 10000) {
+    ScrollingBuffer(int max_size = (1<<16) - 2) {
         MaxSize = max_size;
         Offset  = 0;
         Data.reserve(MaxSize);
     }
+
     void AddPoint(float x, float y) {
         if (Data.size() < MaxSize)
             Data.push_back(ImVec2(x,y));
@@ -60,14 +64,14 @@ LivePlot testplot = {
   .name = "test",
   .paused = false,
   .time = 0,
-  .timescale = 10,
+  .timescale = 60,
 };
 
 LivePlot lineSensorGraph = {
     .name = "lineSensor",
     .paused = false,
     .time = 0,
-    .timescale = 10,
+    .timescale = 100,
 };
 
 
@@ -101,10 +105,11 @@ void lineSensorPlot(struct LivePlot *plot){
 
 void create_plot(struct LivePlot *plot) {
   plot->time += ImGui::GetIO().DeltaTime;
+  static int last_update = -50;
 
   if(ImGui::Button(plot->paused?"resume":"pause")) { plot->paused = !plot->paused; }
   ImGui::SameLine();
-  ImGui::SliderFloat("timescale", &plot->timescale,  0, 50);
+  ImGui::SliderFloat("timescale", &plot->timescale,  0, 1000);
 
   ImGui::BeginGroup();
 
@@ -124,21 +129,24 @@ void create_plot(struct LivePlot *plot) {
       ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_LockMax);
       ImPlot::SetupAxisLimits(ImAxis_X1, plot->time - plot->timescale, plot->time, ImPlotCond_Always);
 
-      for(int i = 0; i < Telometer::packetIdsCount; i++) {
-        if(plot->plotVars[i]) {
-          float new_val = 0;
-          switch(Telometer::packet_id_types[i]) {
-            case Telometer::uint16_t_packet:
-              new_val = *(uint16_t*) Telometer::data_values[i];
-              break;
-            case Telometer::float_packet:
-              new_val = *(float*) Telometer::data_values[i];
-              break;
+      if(plot->time - last_update > 0.1) { 
+        for(int i = 0; i < Telometer::packetIdsCount; i++) {
+          if(plot->plotVars[i]) {
+            float new_val = 0;
+            switch(Telometer::packet_id_types[i]) {
+              case Telometer::uint16_t_packet:
+                new_val = *(uint16_t*) Telometer::data_values[i];
+                break;
+              case Telometer::float_packet:
+                new_val = *(float*) Telometer::data_values[i];
+                break;
 
-            default:
-              break;
+              default:
+                break;
+            }
+            plot->buffers[i].AddPoint(plot->time, new_val);
+            last_update = plot->time;
           }
-          plot->buffers[i].AddPoint(plot->time, new_val);
         }
       }
     } else {    
@@ -266,6 +274,53 @@ void plot_field(const char* name) {
   ImGui::End();
 }
 
+FILE* csv = 0;
+float temperature = 0;
+// int   temps[] = {100, 200, 100, 350};
+// float times[] = {0,    10,  50,  20};
+
+float     times[] ={ 0,   3,    7,   11,   16,   20,   25,   30,   35,   39,   45,   54,   60,   66,   72,   79,   85,   93,  100,  107,  114,  123,  132,  141,  150,  158,  168,  175,  181,  187,  192,  202,  212,  207,  218,  225,  230,  237,  244,  250,  255,  259,  263,  266,  269,  272,  277,  283,  289,  295,  298,  301,  303};
+int      temps[] = { 77,  96,  119,  136,  153,  170,  185,  199,  208,  214,  225,  233,  240,  245,  249,  255,  259,  265,  271,  276,  282,  289,  298,  308,  321,  336,  356,  372,  386,  400,  412,  434,  453,  444,  465,  473,  479,  480,  477,  468,  456,  438,  421,  405,  389,  371,  343,  301,  255,  214,  198,  183,  174 };
+
+// float times[] = {0, 30, 120, 050, 210, 240};
+// float temps[] = {77, 200, 300, 361, 455, 183};
+
+
+
+void tempProfile() {
+  static float time = 0;
+  static float running = false;
+
+  if(ImGui::Begin("reflow")) {
+
+     ImGui::SetWindowFontScale(2);
+     if(ImGui::Button("START")) {
+       running = !running;
+     }
+
+     if(ImGui::Button("RESET")) {
+      time = 0;
+     }
+
+
+
+    ImGui::InputFloat("Time", &time);
+    ImGui::InputFloat("Temperature", &temperature);
+  }
+
+  for(int i = 1; i < sizeof(temps) / sizeof(int); i++ ) {
+    if(time >= times[i-1] && time <= times[i]) {
+      float lerp = (float)(time - times[i-1]) / (float)(times[i] - times[i - 1]);  
+      temperature = temps[i - 1] + (temps[i] - temps[i - 1]) *lerp;
+      // printf("%f\n", temperature);
+      break;
+    }
+  }
+  ImGui::End();
+  if(running) 
+  time += ImGui::GetIO().DeltaTime;
+}
+
 void update() {
   Telometer::update();
 
@@ -313,6 +368,8 @@ void update() {
           break;
       }
     };
+
+
   };
 
   ImGui::End();
@@ -355,6 +412,7 @@ void update() {
 
   plot_field("field");
 
+  tempProfile();
 }
 
 
@@ -368,7 +426,12 @@ int main(int, char**) {
 
   // Setup logger
   Telometer::init();
-  
+
+  usleep(1e6);
+
+  Telometer::initPacket(Telemetry::temp, &temperature);
+  csv = fopen("profile.csv", "r");
+
   // From 2.0.18: Enable native IME.
 #ifdef SDL_HINT_IME_SHOW_UI
   SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
