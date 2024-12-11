@@ -42,7 +42,7 @@ namespace Telemetry {
       return(-1);
     }
   
-    serial = open("/dev/ttyACM0", O_NONBLOCK | O_RDWR);
+    serial = open("/dev/ttyUSB0", O_NONBLOCK | O_RDWR);
 
     poll_struct.fd = serial;
     poll_struct.events = POLLRDNORM;

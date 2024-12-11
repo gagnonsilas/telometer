@@ -247,12 +247,12 @@ void plot_field(const char* name) {
   ImVec2 size = {field_x * 2 * sf, field_y * sf * 2};
   
   draw_list->AddRectFilled({start}, {start.x + size.x, start.y + size.y}, IM_COL32(50, 50, 50, 100));
-  // for(int i = 0; i < 3; i ++) {
-  //   draw_list->AddLine(to_screen_coords({0, (float)(20 + i * GRID_SPACING)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * GRID_SPACING)}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
-  // }
-  // for(int i = 0; i < 6; i ++) {
-  //   draw_list->AddLine(to_screen_coords({(float)(20 + i * GRID_SPACING), 0}, start, size, sf), to_screen_coords({(float)(20 + i * GRID_SPACING), field_y}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
-  // }
+  for(int i = 0; i < 3; i ++) {
+    draw_list->AddLine(to_screen_coords({0, (float)(20 + i * GRID_SPACING)}, start, size, sf), to_screen_coords({field_x, (float)(20 + i * GRID_SPACING)}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
+  }
+  for(int i = 0; i < 6; i ++) {
+    draw_list->AddLine(to_screen_coords({(float)(20 + i * GRID_SPACING), 0}, start, size, sf), to_screen_coords({(float)(20 + i * GRID_SPACING), field_y}, start, size, sf), IM_COL32(255, 255, 255, 150), 2*sf);
+  }
 
   
   draw_list->AddCircle(to_screen_coords((vec2<float>){.x = *(float*)Telemetry::getValue(Telemetry::cos),.y =*(float*)Telemetry::getValue(Telemetry::sin)}, start, size, sf), 0.01 * sf, IM_COL32(29, 245, 187, 255), 0, line_thickness * sf);
@@ -360,12 +360,62 @@ void update() {
           if(ImGui::DragFloat(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 0.01, 0.0001, 1))
             Telometer::sendPacket((Telometer::packet_id)i);
           break;
-       case Telometer::uint32_t_packet: {
-          // displayFloatVec(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 6);
-          ImGui::Text("%c, %c, %c", ((char*)Telometer::data_values[i])[0],((char*)Telometer::data_values[i])[1], ((char*)Telometer::data_values[i])[2]);
-          // ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
+        case Telometer::uint32_t_packet: {
+            // displayFloatVec(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 6);
+            ImGui::Text("%c, %c, %c", ((char*)Telometer::data_values[i])[0],((char*)Telometer::data_values[i])[1], ((char*)Telometer::data_values[i])[2]);
+            // ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
+            }
+            break;
+        case Telometer::angle_packet:
+          temp_angle = MathUtils::getDegrees(*(angle*)Telometer::data_values[i]);
+          if(ImGui::DragFloat(Telometer::packet_id_names[i], &temp_angle)) {
+            *(angle*)Telometer::data_values[i] = MathUtils::angleFromDegrees(temp_angle);
+            Telometer::sendPacket((Telometer::packet_id)i);
           }
           break;
+        case Telometer::vec2f_packet:
+          if(ImGui::DragFloat2(Telometer::packet_id_names[i], (float*)Telometer::data_values[i]))
+            Telometer::sendPacket((Telometer::packet_id)i);
+          break;
+        // case Telometer::vec3f_packet:
+        //   if(ImGui::DragFloat3(Telometer::packet_id_names[i], (float*)Telometer::data_values[i]))
+        //     Telometer::sendPacket((Telometer::packet_id)i);
+        //   break;
+        // case Telometer::vec3i16_packet: {
+        //   int vec3i16_temp[3]; 
+        //   vec3i16_temp[0] = ((int16_t*)Telometer::data_values[i])[0];
+        //   vec3i16_temp[1] = ((int16_t*)Telometer::data_values[i])[1];
+        //   vec3i16_temp[2] = ((int16_t*)Telometer::data_values[i])[2];
+
+        //   if(ImGui::InputInt3(Telometer::packet_id_names[i], &vec3i16_temp[0]))
+        //     Telometer::sendPacket((Telometer::packet_id)i);
+        //    (*(vec3<int16_t>*)Telometer::data_values[i]).x = vec3i16_temp[0];
+        //    (*(vec3<int16_t>*)Telometer::data_values[i]).y = vec3i16_temp[1];
+        //    (*(vec3<int16_t>*)Telometer::data_values[i]).z = vec3i16_temp[2];
+        //   }
+        //   break;
+        // case Telometer::vec2i16_packet: {
+        //   int vec2i16_temp[2]; 
+        //   vec2i16_temp[0] = (*(vec2<int16_t>*)Telometer::data_values[i]).x;
+        //   vec2i16_temp[1] = (*(vec2<int16_t>*)Telometer::data_values[i]).y;
+
+        //   if(ImGui::InputInt2(Telometer::packet_id_names[i], &vec2i16_temp[0])) {
+        //     (*(vec2<int16_t>*)Telometer::data_values[i]).x = vec2i16_temp[0];
+        //     (*(vec2<int16_t>*)Telometer::data_values[i]).y = vec2i16_temp[1];
+            
+        //     Telometer::sendPacket((Telometer::packet_id)i);
+        //   }
+        //   }
+        //   break;
+        // case Telometer::PID_constants_packet:
+        //   if(ImGui::DragFloat3(Telometer::packet_id_names[i], (float*)Telometer::data_values[i]))
+        //     Telometer::sendPacket((Telometer::packet_id)i);
+        //   break;
+        // case Telometer::vec6f_packet: {
+        //   displayFloatVec(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 6);
+        //   // ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
+        //   }
+        //   break;
       }
     };
 
