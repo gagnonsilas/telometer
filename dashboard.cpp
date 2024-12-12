@@ -227,6 +227,7 @@ void plot_field(const char* name) {
 
 
   vec2<float> robot_pos = *(vec2<float>*) Telometer::data_values[Telometer::position];
+  vec2<float> target = *(vec2<float>*) Telometer::data_values[Telometer::targetPosition];
   angle robot_heading = *(angle*)Telometer::data_values[Telometer::heading];
 
 
@@ -263,7 +264,7 @@ void plot_field(const char* name) {
   // }
 
   
-  draw_list->AddCircle(to_screen_coords((vec2<float>){.x = *(float*)Telemetry::getValue(Telemetry::cos),.y =*(float*)Telemetry::getValue(Telemetry::sin)}, start, size, sf), 0.01 * sf, IM_COL32(29, 245, 187, 255), 0, line_thickness * sf);
+  draw_list->AddCircle(to_screen_coords(target, start, size, sf), sf, IM_COL32(29, 245, 187, 255), 0, line_thickness * sf);
 
   drawRobot(draw_list, robot_pos, robot_heading, robot_size, line_thickness, start, size, sf, IM_COL32(255, 0, 255, 255));
   // constexpr int count = 1000;
@@ -335,6 +336,7 @@ void update() {
 
   if(ImGui::Begin("Data")) {
     float temp_angle;
+    uint32_t temp_int;
 
     for(int i = 0;i < Telometer::packetIdsCount; i++) {
       receivedUpdateDecay[i] *= 0.99;
@@ -371,9 +373,11 @@ void update() {
           break;
         case Telometer::uint32_t_packet: {
             // displayFloatVec(Telometer::packet_id_names[i], (float*)Telometer::data_values[i], 6);
-            ImGui::Text("%c, %c, %c", ((char*)Telometer::data_values[i])[0],((char*)Telometer::data_values[i])[1], ((char*)Telometer::data_values[i])[2]);
-            // ImGui::InputInt3(Telometer::packet_id_names[i], (int*)Telometer::data_values[i], 6);
-            }
+           temp_int = *(uint32_t*)Telometer::data_values[i];
+            if(ImGui::InputInt(Telometer::packet_id_names[i], (int32_t*)&temp_int)) {
+              *(uint32_t*)Telometer::data_values[i]= temp_int;
+              Telometer::sendPacket((Telometer::packet_id)i);
+            }}
             break;
         case Telometer::angle_packet:
           temp_angle = MathUtils::getDegrees(*(angle*)Telometer::data_values[i]);
