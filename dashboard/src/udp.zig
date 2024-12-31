@@ -2,8 +2,9 @@ const std = @import("std");
 const posix = std.posix;
 
 const MAX_UDP_PACKET_SIZE = 1024;
+const tm = @import("telometer");
 
-pub fn UDPBackend(comptime Data: type) type {
+pub fn UDPBackend() type {
     return struct {
         const Self = @This();
         udpSocket: posix.socket_t,
@@ -36,12 +37,7 @@ pub fn UDPBackend(comptime Data: type) type {
             );
 
             try posix.bind(self.udpSocket, &local.any, local.getOsSockLen());
-            // servaddr.sin_family = AF_INET;
-            // servaddr.sin_port = htons(PORT);
-            // servaddr.sin_addr.s_addr = inet_addr(ip);
 
-            // int bind_rc =
-            //     bind(udpSocket, (const struct sockaddr *)&servaddr, sizeof(servaddr));
             std.debug.print("udp openn\n", .{});
         }
 
@@ -68,25 +64,28 @@ pub fn UDPBackend(comptime Data: type) type {
 
         pub fn update(self: *Self) void {
             if (self.writePointer > 0) {
-                _ = try posix.sendto(
+                _ = posix.sendto(
                     self.udpSocket,
                     self.writeBuffer[0..self.writePointer],
                     0,
-                    self.addr,
-                    *self.addr.len,
+                    &self.addr,
+                    @sizeOf(posix.socklen_t),
                 ) catch {};
                 self.writePointer = 0;
             }
-            readNextUDPPacket();
+
+            self.readNextUDPPacket();
         }
 
-        pub fn writePacket(self: Self, data: Data) bool {
-            self.writeBuffer[self.writePointer] = data.type;
-            @memcpy(&self.writeBuffer[self.writePointer + @sizeOf(data.type)], @as([data.size]u8, data.pointer));
+        pub fn writePacket(self: *Self, header: tm.Header, data: tm.Data) bool {
+            @memcpy(self.writeBuffer[self.writePointer .. self.writePointer + @sizeOf(tm.Header)], @as([*]u8, @constCast(@ptrCast(&header))));
+            self.writePointer += @sizeOf(tm.Header);
+            @memcpy(self.writeBuffer[self.writePointer .. self.writePointer + data.size], @as([*]u8, @ptrCast(data.pointer)));
+            self.writePointer += data.size;
             return true;
         }
 
-        pub fn read(self: *Self, buffer: ?[]u8, size: usize) void {
+        pub fn read(self: *Self, buffer: ?[*]u8, size: usize) void {
             if (buffer) |buf| {
                 @memcpy(
                     buf[0..size],
@@ -96,12 +95,12 @@ pub fn UDPBackend(comptime Data: type) type {
             self.readPointer += size;
         }
 
-        pub fn getNextID(self: *Self) ?Data.id {
-            if (self.readAvailable - self.readPointer < @sizeOf(Data.id))
+        pub fn getNextHeader(self: *Self) ?tm.Header {
+            if (self.readAvailable - self.readPointer < @sizeOf(tm.Header))
                 return null;
-            var id: Data.id = undefined;
-            self.read(&id, @sizeOf(id));
-            return id;
+            var header: tm.Header = undefined;
+            self.read(@as([*]u8, @ptrCast(&header)), @sizeOf(@TypeOf(header)));
+            return header;
         }
 
         pub fn end(self: Self) void {

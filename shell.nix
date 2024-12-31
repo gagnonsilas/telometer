@@ -6,7 +6,7 @@ pkgs.mkShell {
     SDL2
     pkg-config
     zig
-    python311Packages.compiledb
+    compiledb
     compdb
     gcc
   ];

@@ -13,8 +13,8 @@ class PosixUdpBackend : Backend {
 public:
   PosixUdpBackend(int port);
   void update() override; // run after at the end of update every loop
-  bool writePacket(Data data) override;
-  bool getNextID(uint8_t *id) override;
+  bool writePacket(TelometerHeader id, Data data) override;
+  bool getNextID(TelometerHeader *id) override;
   void read(uint8_t *buffer, unsigned int size) override;
   void end() override;
 

@@ -42,6 +42,10 @@
         .telometer = .{
             .path = "../zig",
         },
+        .serial = .{
+            .url = "git+https://github.com/ZigEmbeddedGroup/serial#2db309014d2ac9865cc8d7753664829c86588fca",
+            .hash = "12205583d4fc231329bc966d65f9fd5dd4d6699e8d90fe0e662fd123fe496b064027",
+        },
     },
     .paths = .{
         "build.zig",

@@ -7,8 +7,10 @@ const c = @cImport({
     @cInclude("glad/glad.h");
     @cInclude("SDL2/SDL.h");
 });
+
 const tm = @import("telometer");
-const udp = @import("udp.zig");
+const UDPBackend = @import("udp.zig").UDPBackend();
+const serialbackend = @import("serial.zig").SerialBackend();
 
 const telemetry = @cImport({
     @cInclude("Example.h");
@@ -19,13 +21,29 @@ fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
 }
 
 const PORT = 62895;
-var backend = udp.UDPBackend(tm.Data).init();
 
-const instance = tm.TelometerInstance(backend, telemetry.TelemetryPackets);
+var backend = serialbackend.init();
+var packets: telemetry.TelemetryPackets = undefined;
+var instance: tm.TelometerInstance(serialbackend, telemetry.TelemetryPackets) = undefined;
 
 pub fn dispValues() void {}
 
 pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer {
+        const deinit_status = gpa.deinit();
+        //fail test; can't try in defer as defer is executed after we return
+        if (deinit_status == .leak) @panic("TEST FAIL");
+    }
+
+    packets = telemetry.initTelemetryPackets();
+    // instance = try tm.TelometerInstance(serialbackend, telemetry.TelemetryPackets).init(
+    //     std.heap.c_allocator,
+    //     backend,
+    //     &packets,
+    // );
+
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
         return error.GLFWInitFailed;
     }
@@ -64,7 +82,10 @@ pub fn main() !void {
     io.*.ConfigFlags |= c.ImGuiConfigFlags_DockingEnable;
 
     const dejavu = @embedFile("fonts/DejavuSansMono-5m7L.ttf");
-    _ = c.ImFontAtlas_AddFontFromMemoryTTF(io.*.Fonts, @constCast(@ptrCast(dejavu)), dejavu.len, 16, c.ImFontConfig_ImFontConfig(), null);
+    const dejavu_mem = try allocator.alloc(u8, dejavu.len);
+    @memcpy(dejavu_mem, dejavu);
+
+    _ = c.ImFontAtlas_AddFontFromMemoryTTF(io.*.Fonts, @ptrCast(dejavu_mem), dejavu.len, 16, c.ImFontConfig_ImFontConfig(), null);
 
     c.igStyleColorsDark(null);
 
@@ -76,11 +97,12 @@ pub fn main() !void {
 
     const clear_color = c.ImVec4{ .x = 0.45, .y = 0.55, .z = 0.60, .w = 1.00 };
 
-    try backend.openUDPSocket(PORT);
+    try backend.openSerial("/dev/ttyUSB0");
 
     var running: bool = true;
     while (running) {
         var event: c.SDL_Event = undefined;
+
         while (0 != c.SDL_PollEvent(&event)) {
             if (c.ImGui_ImplSDL2_ProcessEvent(&event)) continue;
             switch (event.type) {
@@ -97,11 +119,6 @@ pub fn main() !void {
 
         _ = c.igDockSpaceOverViewport(0, null, 0, c.ImGuiWindowClass_ImGuiWindowClass());
 
-        if (c.igBegin("test", null, 0)) {}
-        c.igEnd();
-
-        c.igShowDemoWindow(null);
-
         if (c.igBegin("Yippee!", null, 0)) {
             if (c.igButton("Hi Silas!", .{})) {
                 running = false;
@@ -109,7 +126,7 @@ pub fn main() !void {
         }
         c.igEnd();
 
-        backend.readNextUDPPacket();
+        update();
 
         c.igRender();
         var width: c_int = undefined;
@@ -122,4 +139,20 @@ pub fn main() !void {
 
         c.SDL_GL_SwapWindow(window);
     }
+}
+
+fn list() void {
+    if (c.iBegin("data", null, 0)) {}
+    c.igEnd();
+}
+
+fn update() void {
+    if (c.igBegin("test", null, 0)) {}
+    // for
+    // c.igEnd();
+    instance.update();
+
+    c.igEnd();
+
+    // instance.update();
 }

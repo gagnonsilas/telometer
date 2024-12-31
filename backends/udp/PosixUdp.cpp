@@ -46,7 +46,7 @@ int PosixUdpBackend::openUDPSocket(const char *ip) {
   return udpSocket != -1 && bind_rc != -1;
 }
 
-bool PosixUdpBackend::writePacket(Data data) {
+bool PosixUdpBackend::writePacket(TelometerHeader id, Data data) {
   memcpy(&writeBuffer[writePointer], &data.type, sizeof(data.type));
   memcpy(&writeBuffer[writePointer + sizeof(data.type)], data.pointer,
          data.size);
@@ -63,13 +63,13 @@ unsigned int PosixUdpBackend::available() {
   return readAvailable - readPointer;
 }
 
-bool PosixUdpBackend::getNextID(uint8_t *id) {
-  if (available() < sizeof(id))
+bool PosixUdpBackend::getNextID(TelometerHeader *id) {
+  if (available() < sizeof(*id))
     readNextUDPPacket();
-  if (available() < sizeof(id))
+  if (available() < sizeof(*id))
     return false;
 
-  read((uint8_t *)id, sizeof(id));
+  read((uint8_t *)id, sizeof(*id));
   return true;
 }
 

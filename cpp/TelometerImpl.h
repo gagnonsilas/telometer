@@ -13,8 +13,8 @@ typedef uint8_t packetID;
 class Backend {
 public:
   virtual void update() = 0; // run after at the end of update every loop
-  virtual bool writePacket(Data data) = 0;
-  virtual bool getNextID(uint8_t *id) = 0;
+  virtual bool writePacket(TelometerHeader id, Data data) = 0;
+  virtual bool getNextID(TelometerHeader *id) = 0;
   virtual void read(uint8_t *buffer, unsigned int size) = 0;
   virtual void end() = 0;
 };

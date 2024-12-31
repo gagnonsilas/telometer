@@ -11,6 +11,7 @@ pub fn build(b: *std.Build) void {
     const implot_dep = b.dependency("implot", .{});
     const cimgui_dep = b.dependency("cimgui", .{});
     const cimplot_dep = b.dependency("cimplot", .{});
+    const serial_dep = b.dependency("serial", .{ .target = target, .optimize = optimize });
     const telometer_dep = b.dependency("telometer", .{ .target = target, .optimize = optimize });
 
     const zig_imgui = b.addStaticLibrary(.{
@@ -110,7 +111,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
     exe.root_module.addImport("telometer", telometer_dep.module("Telometer"));
+    exe.root_module.addImport("serial", serial_dep.module("serial"));
     // exe.linkLibrary(telometer_dep.artifact("Telometer"));
     b.installArtifact(exe);
 
@@ -130,7 +133,7 @@ pub fn build(b: *std.Build) void {
 
     exe.addIncludePath(b.path("glad/include"));
     exe.linkLibrary(glad);
-    exe.addIncludePath(b.path("../src/Example.h"));
+    exe.addIncludePath(b.path("../src"));
 
     exe.root_module.addCMacro("CIMGUI_USE_SDL2", "");
     exe.root_module.addCMacro("CIMGUI_USE_OPENGL3", "");

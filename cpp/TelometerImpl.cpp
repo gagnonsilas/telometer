@@ -4,12 +4,9 @@
 
 namespace Telometer {
 
-void init(TelometerInstance instance) {
-  instance.backend->init();
-}
+void init(TelometerInstance instance) {}
 
 void update(TelometerInstance instance) {
-  instance.backend->updateBegin();
   for (int i = instance.nextPacket;
        i < instance.nextPacket + (int)instance.count; i++) {
     packetID currentId = (packetID)(i % instance.count);
@@ -20,7 +17,7 @@ void update(TelometerInstance instance) {
       continue;
     }
 
-    if(instance.backend->writePacket(packet)) {
+    if (instance.backend->writePacket(packet)) {
       instance.nextPacket = currentId;
       break;
     }
@@ -30,7 +27,7 @@ void update(TelometerInstance instance) {
 
   packetID id;
   while (instance.backend->getNextID(&id)) {
-    
+
     if (id >= instance.count) {
       debug("invalid header\n");
       continue;
@@ -38,8 +35,8 @@ void update(TelometerInstance instance) {
 
     Data packet = instance.packetStruct[id];
 
-    if(packet.state == TelometerLockedQueued) {
-      uint8_t* trashBin = (uint8_t*)alloca(packet.size);
+    if (packet.state == TelometerLockedQueued) {
+      uint8_t *trashBin = (uint8_t *)alloca(packet.size);
       instance.backend->read(trashBin, packet.size);
       continue;
     }
@@ -49,7 +46,7 @@ void update(TelometerInstance instance) {
     packet.state = TelometerReceived;
   }
 
-  instance.backend->updateEnd();
+  instance.backend->update();
 }
 
 // Log a value for a specific log ID

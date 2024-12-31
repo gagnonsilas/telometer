@@ -13,5 +13,5 @@
 
 TELOMETER_INSTANCE(Telemetry, PACKET_TYPES, PACKETS)
 
-extern TelemetryPackets packets;
+extern struct TelemetryPackets packets;
 
