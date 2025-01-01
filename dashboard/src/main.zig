@@ -46,10 +46,6 @@ pub fn main() !void {
         &packets,
     );
 
-    std.debug.print("fields: {}\n", .{instance.packet_struct.len});
-
-    // instance.packet_struct[1].state = tm.PacketState.Sent;
-
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
         return error.GLFWInitFailed;
     }
@@ -150,28 +146,41 @@ var updatesDecay: [telemetry.TelemetryPacketCount]f32 = std.mem.zeroes([telemetr
 
 fn list() void {
     if (c.igBegin("data", null, 0)) {}
-    std.debug.print("{}", .{instance.packet_struct.len});
-    for (instance.packet_struct, 0..) |packet, i| {
+    for (instance.packet_struct, 0..) |*packet, i| {
         updatesDecay[i] *= 0.99;
 
         if (packet.state == tm.PacketState.Received) {
             updatesDecay[i] = 1;
-            // packet.state = tm.PacketState.Sent;
+            packet.state = tm.PacketState.Sent;
         }
+        c.igPushID_Int(@intCast(i));
+        defer c.igPopID();
 
-        if (c.igColorButton("Updated?", c.ImVec4{ .x = 0.1, .y = 0.9 * updatesDecay[i], .z = 0.05, .w = updatesDecay[i] }, 0, c.ImVec2{ .x = 1, .y = 1 })) {
-            std.debug.print("test\n", .{});
-            // packet.state = tm.PacketState.Queued;
+        if (c.igColorButton(
+            "Updated?",
+            c.ImVec4{
+                .x = 0.1,
+                .y = 0.9 * updatesDecay[i],
+                .z = 0.05,
+                .w = updatesDecay[i],
+            },
+            0,
+            c.ImVec2{ .x = 20, .y = 20 },
+        )) {
+            packet.state = tm.PacketState.Received;
         }
+        c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
 
         switch (packet.type) {
             telemetry.uint32_tTelemetryPacket => {
                 const typ: type = u32;
                 _ = typ;
+                _ = c.igInputInt("test", @ptrCast(@alignCast(packet.pointer)), 0, 0, 0);
             },
             telemetry.vec3fTelemetryPacket => {
                 const typ: type = @Vector(3, f32);
                 _ = typ;
+                _ = c.igInputFloat("test", @ptrCast(@alignCast(packet.pointer)), 0, 0, "%.3f", 0);
             },
             else => {},
         }
