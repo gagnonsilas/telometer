@@ -35,8 +35,8 @@ typedef enum TelometerPacketState : uint8_t {
 
 typedef struct TelometerData {
   void *pointer;
-  uint8_t type;
   size_t size;
+  uint8_t type;
   TelometerPacketState state;
 } TelometerData;
 
