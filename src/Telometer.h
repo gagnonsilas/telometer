@@ -8,8 +8,8 @@
 #define PACKET_STRUCT(namespace, id, packetType) TelometerData id;
 
 #define PACKET_INIT(namespace, id, packetType)                                 \
-  .id = {.type = (uint8_t)packetType##namespace##Packet,                       \
-         .size = sizeof(packetType),                                           \
+  .id = {.size = sizeof(packetType),                                           \
+         .type = (uint8_t)packetType##namespace##Packet,                       \
          .state = TelometerSent},
 
 #define TYPEDEF(N, type, ...) __VA_OPT__(typedef __VA_ARGS__ type;)
