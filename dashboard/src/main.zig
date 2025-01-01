@@ -37,6 +37,8 @@ pub fn main() !void {
         if (deinit_status == .leak) @panic("TEST FAIL");
     }
 
+    _ = allocator; // autofix
+
     packets = telemetry.initTelemetryPackets();
     // instance = try tm.TelometerInstance(serialbackend, telemetry.TelemetryPackets).init(
     //     std.heap.c_allocator,
@@ -81,11 +83,10 @@ pub fn main() !void {
     io.*.ConfigFlags |= c.ImGuiConfigFlags_NavEnableKeyboard;
     io.*.ConfigFlags |= c.ImGuiConfigFlags_DockingEnable;
 
-    const dejavu = @embedFile("fonts/DejavuSansMono-5m7L.ttf");
-    const dejavu_mem = try allocator.alloc(u8, dejavu.len);
-    @memcpy(dejavu_mem, dejavu);
+    // NOTE: you have to use the c allocator bc ImGui will try to free it...
+    const dejavu = try std.heap.c_allocator.dupe(u8, @embedFile("fonts/DejavuSansMono-5m7L.ttf"));
 
-    _ = c.ImFontAtlas_AddFontFromMemoryTTF(io.*.Fonts, @ptrCast(dejavu_mem), dejavu.len, 16, c.ImFontConfig_ImFontConfig(), null);
+    _ = c.ImFontAtlas_AddFontFromMemoryTTF(io.*.Fonts, @ptrCast(dejavu), @intCast(dejavu.len), 16, c.ImFontConfig_ImFontConfig(), null);
 
     c.igStyleColorsDark(null);
 
