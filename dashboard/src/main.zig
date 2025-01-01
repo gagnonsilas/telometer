@@ -38,11 +38,15 @@ pub fn main() !void {
     }
 
     packets = telemetry.initTelemetryPackets();
-    // instance = try tm.TelometerInstance(serialbackend, telemetry.TelemetryPackets).init(
-    //     std.heap.c_allocator,
-    //     backend,
-    //     &packets,
-    // );
+    instance = try tm.TelometerInstance(serialbackend, telemetry.TelemetryPackets).init(
+        std.heap.c_allocator,
+        backend,
+        &packets,
+    );
+
+    std.debug.print("fields: {}\n", .{instance.packet_struct.len});
+
+    // instance.packet_struct[1].state = tm.PacketState.Sent;
 
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
         return error.GLFWInitFailed;
@@ -141,18 +145,46 @@ pub fn main() !void {
     }
 }
 
+var updatesDecay: [telemetry.TelemetryPacketCount]f32 = std.mem.zeroes([telemetry.TelemetryPacketCount]f32);
+
 fn list() void {
-    if (c.iBegin("data", null, 0)) {}
+    if (c.igBegin("data", null, 0)) {}
+    std.debug.print("{}", .{instance.packet_struct.len});
+    for (instance.packet_struct, 0..) |packet, i| {
+        updatesDecay[i] *= 0.99;
+
+        if (packet.state == tm.PacketState.Received) {
+            updatesDecay[i] = 1;
+            // packet.state = tm.PacketState.Sent;
+        }
+
+        if (c.igColorButton("Updated?", c.ImVec4{ .x = 0.1, .y = 0.9 * updatesDecay[i], .z = 0.05, .w = updatesDecay[i] }, 0, c.ImVec2{ .x = 1, .y = 1 })) {
+            std.debug.print("test\n", .{});
+            // packet.state = tm.PacketState.Queued;
+        }
+
+        switch (packet.type) {
+            telemetry.uint32_tTelemetryPacket => {
+                const typ: type = u32;
+                _ = typ;
+            },
+            telemetry.vec3fTelemetryPacket => {
+                const typ: type = @Vector(3, f32);
+                _ = typ;
+            },
+            else => {},
+        }
+    }
+
     c.igEnd();
 }
 
 fn update() void {
     if (c.igBegin("test", null, 0)) {}
-    // for
-    // c.igEnd();
-    instance.update();
-
-    c.igEnd();
 
     // instance.update();
+
+    list();
+
+    c.igEnd();
 }
