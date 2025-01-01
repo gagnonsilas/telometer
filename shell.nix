@@ -10,5 +10,6 @@ pkgs.mkShell {
     compiledb
     # compdb
     gcc
+    gdb
   ];
 }

@@ -26,7 +26,7 @@
     return (name##Packets){packets(PACKET_INIT, name)};                        \
   }
 
-typedef enum TelometerPacketState {
+typedef enum TelometerPacketState : uint8_t {
   TelometerSent,
   TelometerQueued,
   TelometerLockedQueued,
