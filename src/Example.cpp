@@ -3,15 +3,17 @@
 #include "Telometer.h"
 
 
-struct TelemetryPackets packets;
 
+struct TelemetryPackets packets = initTelemetryPackets();
 Telometer::Backend *myBackend = new Telometer::Backend();
 
 Telometer::TelometerInstance telemetry = {
   .backend  = myBackend,
   .count = TelemetryPacketCount,
+  .nextPacket = 0,
   .packetStruct = (Telometer::Data*)&packets
 };
+
 
 int main() {
   Telometer::init(telemetry);

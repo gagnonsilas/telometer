@@ -7,43 +7,44 @@ namespace Telometer {
 void init(TelometerInstance instance) {}
 
 void update(TelometerInstance instance) {
-  for (int i = instance.nextPacket;
-       i < instance.nextPacket + (int)instance.count; i++) {
-    packetID currentId = (packetID)(i % instance.count);
 
-    Data packet = instance.packetStruct[currentId];
+  for (int i = 0; i < (int)instance.count; i++) {
+    uint16_t currentId = (instance.nextPacket + i) % instance.count;
 
-    if (packet.state == TelometerSent || packet.state == TelometerReceived) {
+    Data* packet = &instance.packetStruct[currentId];
+
+    if (packet->state == TelometerSent || packet->state == TelometerReceived) {
       continue;
     }
 
-    if (instance.backend->writePacket(packet)) {
+    if (!instance.backend->writePacket({.id = currentId}, *packet)) {
       instance.nextPacket = currentId;
       break;
     }
 
-    packet.state = TelometerSent;
+    packet->state = TelometerSent;
   }
 
-  packetID id;
-  while (instance.backend->getNextID(&id)) {
+  TelometerHeader header;
+  while (instance.backend->getNextHeader(&header)) {
 
-    if (id >= instance.count) {
+    if (header.id >= instance.count) {
       debug("invalid header\n");
       continue;
     }
 
-    Data packet = instance.packetStruct[id];
+    Data* packet = &instance.packetStruct[header.id];
 
-    if (packet.state == TelometerLockedQueued) {
-      uint8_t *trashBin = (uint8_t *)alloca(packet.size);
-      instance.backend->read(trashBin, packet.size);
+    if (packet->state == TelometerLockedQueued) {
+      uint8_t *trashBin = (uint8_t *)alloca(packet->size);
+      instance.backend->read(trashBin, packet->size);
       continue;
     }
 
-    instance.backend->read((uint8_t *)packet.pointer, packet.size);
+    instance.backend->read((uint8_t *)packet->pointer, packet->size);
 
-    packet.state = TelometerReceived;
+
+    packet->state = TelometerReceived;
   }
 
   instance.backend->update();
@@ -63,5 +64,8 @@ void initPacket(Data packet, void *data) {
 
 // Mark a packet for update
 void sendPacket(Data packet) { packet.state = TelometerQueued; }
+
+void debug(const char *string) {}
+
 
 } // namespace Telometer
