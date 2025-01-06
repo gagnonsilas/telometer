@@ -22,9 +22,9 @@ pub const Header = telometer.TelometerHeader;
 pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) type {
     return struct {
         const Self = @This();
+        const count: usize = @typeInfo(PacketStruct).Struct.fields.len;
         backend: Backend,
-        next_packet: u8 = 0,
-        count: usize = @typeInfo(PacketStruct).Struct.fields.len,
+        next_packet: u16 = 0,
         packet_struct: []Data,
 
         pub fn init(allocator: std.mem.Allocator, backend: Backend, packet_struct: *PacketStruct) !Self {
@@ -40,16 +40,16 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) ty
         }
 
         pub fn update(self: *Self) void {
-            for (0..self.count) |i| {
-                const current_id: u8 = @truncate(self.next_packet + i % self.count);
+            for (0..count) |i| {
+                const current_id: u16 = @truncate(self.next_packet + i % count);
 
-                var packet = self.packet_struct[current_id];
+                var packet = &self.packet_struct[current_id];
 
                 if (packet.state == PacketState.Sent or packet.state == PacketState.Received) {
                     continue;
                 }
 
-                if (!self.backend.writePacket(.{ .id = current_id }, packet)) {
+                if (!self.backend.writePacket(.{ .id = current_id }, packet.*)) {
                     self.next_packet = current_id;
                     break;
                 }
@@ -57,13 +57,14 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) ty
                 packet.state = PacketState.Sent;
             }
 
+            var i: u32 = 0;
             while (self.backend.getNextHeader()) |header| {
-                if (header.id >= self.count) {
-                    std.log.err("Invalid header\n", .{});
+                if (header.id >= count) {
+                    std.log.err("Invalid header", .{});
                     continue;
                 }
 
-                var packet = self.packet_struct[header.id];
+                var packet = &self.packet_struct[header.id];
 
                 if (packet.state == PacketState.LockedQueued) {
                     self.backend.read(null, packet.size) catch {};
@@ -73,6 +74,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) ty
                 self.backend.read(@as([*]u8, @ptrCast(packet.pointer)), packet.size) catch {};
 
                 packet.state = PacketState.Received;
+                i += 1;
             }
 
             self.backend.update();

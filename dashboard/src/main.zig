@@ -116,12 +116,16 @@ pub fn main() !void {
 
     _ = allocator; // autofix
 
+    try backend.openSerial("/dev/ttyUSB0");
+
     packets = telemetry.initTelemetryPackets();
     instance = try tm.TelometerInstance(serialbackend, telemetry.TelemetryPackets).init(
         std.heap.c_allocator,
         backend,
         &packets,
     );
+
+    // instance.packet_struct[0].state = tm.PacketState.Queued;
 
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
         return error.GLFWInitFailed;
@@ -182,8 +186,6 @@ pub fn main() !void {
     defer c.ImGui_ImplOpenGL3_Shutdown();
 
     const clear_color = c.ImVec4{ .x = 0.45, .y = 0.55, .z = 0.60, .w = 1.00 };
-
-    try backend.openSerial("/dev/ttyUSB0");
 
     var running: bool = true;
     while (running) {
@@ -252,7 +254,7 @@ fn list() void {
             0,
             c.ImVec2{ .x = 20, .y = 20 },
         )) {
-            packet.state = tm.PacketState.Received;
+            packet.state = tm.PacketState.Queued;
         }
         c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
 
@@ -262,7 +264,7 @@ fn list() void {
                 _ = typ;
                 _ = c.igInputInt("test", @ptrCast(@alignCast(packet.pointer)), 0, 0, 0);
             },
-            telemetry.vec3fTelemetryPacket => {
+            telemetry.floatTelemetryPacket => {
                 const typ: type = @Vector(3, f32);
                 _ = typ;
                 _ = c.igInputFloat("test", @ptrCast(@alignCast(packet.pointer)), 0, 0, "%.3f", 0);
@@ -277,7 +279,7 @@ fn list() void {
 fn update() void {
     if (c.igBegin("test", null, 0)) {}
 
-    // instance.update();
+    instance.update();
 
     list();
 

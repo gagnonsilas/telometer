@@ -4,6 +4,8 @@ const zig_serial = @import("serial");
 
 const tm = @import("telometer");
 
+const ALIGNMENT: u8 = 0xAA;
+
 pub fn SerialBackend() type {
     return struct {
         const Self = @This();
@@ -26,13 +28,17 @@ pub fn SerialBackend() type {
                 std.debug.print("path={s},\tname={s},\tdriver={s}\n", .{ port.file_name, port.display_name, port.driver orelse "<no driver recognized>" });
             }
 
-            self.serial = std.fs.openFileAbsolute(addr, .{ .mode = .read_write }) catch |err| switch (err) {
+            self.serial = std.fs.cwd().openFile(addr, .{ .mode = .read_write, .lock = .shared }) catch |err| switch (err) {
                 error.FileNotFound => {
                     std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{addr});
                     return;
                 },
                 else => return err,
             };
+
+            var flags = std.posix.fcntl(self.serial.handle, std.posix.F.GETFL, 0) catch unreachable;
+            flags |= std.posix.SOCK.NONBLOCK;
+            _ = std.posix.fcntl(self.serial.handle, std.posix.F.SETFL, flags) catch unreachable;
 
             try zig_serial.configureSerialPort(self.serial, zig_serial.SerialConfig{
                 .baud_rate = 115200,
@@ -51,6 +57,7 @@ pub fn SerialBackend() type {
 
         pub fn writePacket(self: *Self, header: tm.Header, data: tm.Data) bool {
             self.serial.writer().writeStruct(header) catch unreachable;
+            self.serial.writer().writeByte(ALIGNMENT) catch unreachable;
             self.serial.writer().writeAll(@as([*]u8, @ptrCast(data.pointer))[0..data.size]) catch unreachable;
             return true;
         }
@@ -64,14 +71,36 @@ pub fn SerialBackend() type {
         }
 
         pub fn getNextHeader(self: *Self) ?tm.Header {
-            if (((self.serial.getEndPos() catch unreachable) - (self.serial.getPos() catch unreachable)) < @sizeOf(tm.Header))
-                return null;
+            var available: usize = undefined;
+            available = 0;
 
-            var header: tm.Header = undefined;
-            self.read(@as([*]u8, @ptrCast(&header)), @sizeOf(@TypeOf(header))) catch {
+            var rx: [@sizeOf(tm.Header) + @sizeOf(@TypeOf(ALIGNMENT))]u8 = undefined;
+
+            _ = std.posix.system.ioctl(self.serial.handle, std.posix.system.T.FIONREAD, @intFromPtr(&available));
+            if (available < @sizeOf(@TypeOf(rx))) {
+                return null;
+            }
+
+            self.read(@as([*]u8, @ptrCast(&rx)), rx.len) catch {
                 return undefined;
             };
 
+            while (rx[@sizeOf(tm.Header)] != ALIGNMENT) {
+                _ = std.posix.system.ioctl(self.serial.handle, std.posix.system.T.FIONREAD, @intFromPtr(&available));
+                if (available < @sizeOf(@TypeOf(ALIGNMENT)))
+                    return null;
+
+                std.debug.print("{c}", .{rx[0]});
+                for (rx, 0..) |value, i| {
+                    if (i > 0)
+                        rx[i - 1] = value;
+                }
+                self.read(@as([*]u8, @ptrCast(&rx[rx.len - 1])), 1) catch {
+                    return null;
+                };
+            }
+
+            const header: tm.Header = @bitCast(rx[0..@sizeOf(tm.Header)].*);
             return header;
         }
 
