@@ -185,6 +185,9 @@ pub fn main() !void {
     _ = c.ImGui_ImplOpenGL3_Init("#version 410");
     defer c.ImGui_ImplOpenGL3_Shutdown();
 
+    const context = c.ImPlot_CreateContext() orelse @panic("Kill yourself");
+    defer c.ImPlot_DestroyContext(context);
+
     const clear_color = c.ImVec4{ .x = 0.45, .y = 0.55, .z = 0.60, .w = 1.00 };
 
     var running: bool = true;
@@ -280,6 +283,7 @@ fn update() void {
     if (c.igBegin("test", null, 0)) {}
 
     instance.update();
+    c.ImPlot_ShowDemoWindow(&open);
 
     list();
 
