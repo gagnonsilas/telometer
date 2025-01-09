@@ -175,7 +175,7 @@ pub fn main() !void {
     _ = c.ImFontAtlas_AddFontFromMemoryTTF(io.*.Fonts, @ptrCast(dejavu), @intCast(dejavu.len), 16, c.ImFontConfig_ImFontConfig(), null);
 
     // c.igStyleColorsDark(null);
-    // theme_fluent();
+    theme_fluent();
 
     _ = c.ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     defer c.ImGui_ImplSDL2_Shutdown();

@@ -8,9 +8,13 @@
 #define PACKET_STRUCT(namespace, id, packetType) TelometerData id;
 
 #define PACKET_INIT(namespace, id, packetType)                                 \
-  .id = {.size = sizeof(packetType),                                           \
-         .type = (uint8_t)packetType##namespace##Packet,                       \
-         .state = TelometerSent},
+  .id = {                                                                      \
+      .size = sizeof(packetType),                                              \
+      .type = (uint8_t)packetType##namespace##Packet,                          \
+      .queued = 0,                                                             \
+      .locked = 0,                                                             \
+      .received = 0,                                                           \
+  },
 
 #define TYPEDEF(N, type, ...) __VA_OPT__(typedef __VA_ARGS__ type;)
 
@@ -26,18 +30,13 @@
     return (name##Packets){packets(PACKET_INIT, name)};                        \
   }
 
-typedef enum TelometerPacketState : uint8_t {
-  TelometerSent,
-  TelometerQueued,
-  TelometerLockedQueued,
-  TelometerReceived,
-} TelometerPacketState;
-
 typedef struct TelometerData {
   void *pointer;
   size_t size;
   uint8_t type;
-  TelometerPacketState state;
+  uint8_t queued;
+  uint8_t locked;
+  uint8_t received;
 } TelometerData;
 
 typedef struct TelometerHeader {

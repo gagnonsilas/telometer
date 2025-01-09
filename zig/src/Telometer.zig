@@ -3,18 +3,13 @@ const telometer = @cImport({
     @cInclude("Telometer.h");
 });
 
-pub const PacketState = enum(u8) {
-    Sent = telometer.TelometerSent,
-    Queued = telometer.TelometerQueued,
-    LockedQueued = telometer.TelometerLockedQueued,
-    Received = telometer.TelometerReceived,
-};
-// telometer.TelometerData;
 pub const Data = extern struct {
     pointer: *anyopaque,
     size: usize,
     type: u8,
-    state: PacketState,
+    queued: bool,
+    locked: bool,
+    received: bool,
 };
 
 pub const Header = telometer.TelometerHeader;
@@ -40,12 +35,16 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) ty
         }
 
         pub fn update(self: *Self) void {
+            for (self.packet_struct) |*packet| {
+                packet.received = false;
+            }
+
             for (0..count) |i| {
                 const current_id: u16 = @truncate(self.next_packet + i % count);
 
                 var packet = &self.packet_struct[current_id];
 
-                if (packet.state == PacketState.Sent or packet.state == PacketState.Received) {
+                if (!packet.queued) {
                     continue;
                 }
 
@@ -54,7 +53,8 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) ty
                     break;
                 }
 
-                packet.state = PacketState.Sent;
+                packet.queued = false;
+                packet.locked = false;
             }
 
             var i: u32 = 0;
@@ -66,14 +66,14 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) ty
 
                 var packet = &self.packet_struct[header.id];
 
-                if (packet.state == PacketState.LockedQueued) {
+                if (packet.locked) {
                     self.backend.read(null, packet.size) catch {};
                     continue;
                 }
 
                 self.backend.read(@as([*]u8, @ptrCast(packet.pointer)), packet.size) catch {};
 
-                packet.state = PacketState.Received;
+                packet.received = true;
                 i += 1;
             }
 
