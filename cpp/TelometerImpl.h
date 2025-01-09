@@ -6,7 +6,6 @@
 
 namespace Telometer {
 typedef TelometerData Data;
-typedef TelometerPacketState PacketState;
 
 typedef uint16_t packetID;
 

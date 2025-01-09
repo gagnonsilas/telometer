@@ -23,7 +23,7 @@ int main() {
 
   while(true) {
     pos++;
-    packets.robotPos.state = TelometerQueued;
+    packets.robotPos.queued = true;
     Telometer::update(telemetry);
   }
   

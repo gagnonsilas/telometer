@@ -7,6 +7,9 @@
 
 #define PACKET_STRUCT(namespace, id, packetType) TelometerData id;
 
+#define TYPE_FORMAT(namespace, t, packetType)                                  \
+  packetType t;
+
 #define PACKET_INIT(namespace, id, packetType)                                 \
   .id = {                                                                      \
       .size = sizeof(packetType),                                              \
@@ -28,7 +31,10 @@
       sizeof(name##Packets) / sizeof(TelometerData);                           \
   inline struct name##Packets init##name##Packets() {                          \
     return (name##Packets){packets(PACKET_INIT, name)};                        \
-  }
+  }                                                                            \
+  struct name##Types {                                                         \
+    packets(TYPE_FORMAT, name)                                                \
+  };
 
 typedef struct TelometerData {
   void *pointer;

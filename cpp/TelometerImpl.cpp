@@ -9,11 +9,15 @@ void init(TelometerInstance instance) {}
 void update(TelometerInstance instance) {
 
   for (int i = 0; i < (int)instance.count; i++) {
+    instance.packetStruct[i].received = false;
+  }
+
+  for (int i = 0; i < (int)instance.count; i++) {
     uint16_t currentId = (instance.nextPacket + i) % instance.count;
 
-    Data* packet = &instance.packetStruct[currentId];
+    Data *packet = &instance.packetStruct[currentId];
 
-    if (packet->state == TelometerSent || packet->state == TelometerReceived) {
+    if (packet->queued) {
       continue;
     }
 
@@ -22,7 +26,8 @@ void update(TelometerInstance instance) {
       break;
     }
 
-    packet->state = TelometerSent;
+    packet->locked = false;
+    packet->queued = false;
   }
 
   TelometerHeader header;
@@ -33,9 +38,9 @@ void update(TelometerInstance instance) {
       continue;
     }
 
-    Data* packet = &instance.packetStruct[header.id];
+    Data *packet = &instance.packetStruct[header.id];
 
-    if (packet->state == TelometerLockedQueued) {
+    if (packet->locked) {
       uint8_t *trashBin = (uint8_t *)alloca(packet->size);
       instance.backend->read(trashBin, packet->size);
       continue;
@@ -43,8 +48,7 @@ void update(TelometerInstance instance) {
 
     instance.backend->read((uint8_t *)packet->pointer, packet->size);
 
-
-    packet->state = TelometerReceived;
+    packet->received = true;
   }
 
   instance.backend->update();
@@ -53,19 +57,18 @@ void update(TelometerInstance instance) {
 // Log a value for a specific log ID
 void sendValue(Data packet, void *data) {
   memcpy(packet.pointer, data, packet.size);
-  packet.state = TelometerQueued;
+  packet.queued = true;
 }
 
 // Log a data pointer for a specific log ID
 void initPacket(Data packet, void *data) {
   packet.pointer = data;
-  packet.state = TelometerQueued;
+  packet.queued = true;
 }
 
 // Mark a packet for update
-void sendPacket(Data packet) { packet.state = TelometerQueued; }
+void sendPacket(Data packet) { packet.queued = true; }
 
 void debug(const char *string) {}
-
 
 } // namespace Telometer
