@@ -1,5 +1,5 @@
 const std = @import("std");
-const c = @cImport({
+pub const c = @cImport({
     @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", {});
     @cInclude("cimgui.h");
     @cInclude("cimgui_impl.h");
@@ -78,8 +78,8 @@ fn theme_fluent() void {
     colors[c.ImGuiCol_SliderGrab] = c.ImVec4{ .x = 0.45, .y = 0.45, .z = 0.45, .w = 1.00 }; // Dark gray for sliders
     colors[c.ImGuiCol_SliderGrabActive] = c.ImVec4{ .x = 0.50, .y = 0.50, .z = 0.50, .w = 1.00 }; // Slightly lighter gray when active
     colors[c.ImGuiCol_Button] = c.ImVec4{ .x = 0.25, .y = 0.25, .z = 0.25, .w = 1.00 }; // Button background (dark gray)
-    colors[c.ImGuiCol_ButtonHovered] = c.ImVec4{ .x = 0.30, .y = 0.30, .z = 0.30, .w = 1.00 }; // Button hover state
-    colors[c.ImGuiCol_ButtonActive] = c.ImVec4{ .x = 0.35, .y = 0.35, .z = 0.35, .w = 1.00 }; // Button active state
+    colors[c.ImGuiCol_ButtonHovered] = c.ImVec4{ .x = 0.30, .y = 0.30, .z = 0.30, .w = 0.2 }; // Button hover state
+    colors[c.ImGuiCol_ButtonActive] = c.ImVec4{ .x = 0.35, .y = 0.35, .z = 0.35, .w = 0.2 }; // Button active state
     colors[c.ImGuiCol_Header] = c.ImVec4{ .x = 0.40, .y = 0.40, .z = 0.40, .w = 1.00 }; // Dark gray for menu headers
     colors[c.ImGuiCol_HeaderHovered] = c.ImVec4{ .x = 0.45, .y = 0.45, .z = 0.45, .w = 1.00 }; // Slightly lighter on hover
     colors[c.ImGuiCol_HeaderActive] = c.ImVec4{ .x = 0.50, .y = 0.50, .z = 0.50, .w = 1.00 }; // Lighter gray when active
@@ -124,8 +124,6 @@ pub fn main() !void {
         backend,
         &packets,
     );
-
-    // instance.packet_struct[0].state = tm.PacketState.Queued;
 
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
         return error.GLFWInitFailed;
@@ -177,7 +175,7 @@ pub fn main() !void {
     _ = c.ImFontAtlas_AddFontFromMemoryTTF(io.*.Fonts, @ptrCast(dejavu), @intCast(dejavu.len), 16, c.ImFontConfig_ImFontConfig(), null);
 
     // c.igStyleColorsDark(null);
-    theme_fluent();
+    // theme_fluent();
 
     _ = c.ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     defer c.ImGui_ImplSDL2_Shutdown();
@@ -187,6 +185,9 @@ pub fn main() !void {
 
     const context = c.ImPlot_CreateContext() orelse @panic("Kill yourself");
     defer c.ImPlot_DestroyContext(context);
+
+    // std.debug.print("drag drop? {}\n", .{c.igIsDragDropActive()});
+    // c.igDragDrop
 
     const clear_color = c.ImVec4{ .x = 0.45, .y = 0.55, .z = 0.60, .w = 1.00 };
 
@@ -234,15 +235,17 @@ pub fn main() !void {
 
 var updatesDecay: [telemetry.TelemetryPacketCount]f32 = std.mem.zeroes([telemetry.TelemetryPacketCount]f32);
 
+// const IntDragDrop = struct { "" };
+
 fn list() void {
     if (c.igBegin("data", null, 0)) {}
     for (instance.packet_struct, 0..) |*packet, i| {
         updatesDecay[i] *= 0.99;
 
-        if (packet.state == tm.PacketState.Received) {
+        if (packet.received) {
             updatesDecay[i] = 1;
-            packet.state = tm.PacketState.Sent;
         }
+
         c.igPushID_Int(@intCast(i));
         defer c.igPopID();
 
@@ -255,9 +258,9 @@ fn list() void {
                 .w = updatesDecay[i],
             },
             0,
-            c.ImVec2{ .x = 20, .y = 20 },
+            c.ImVec2{ .x = c.igGetFrameHeight(), .y = c.igGetFrameHeight() },
         )) {
-            packet.state = tm.PacketState.Queued;
+            packet.queued = true;
         }
         c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
 
@@ -265,6 +268,16 @@ fn list() void {
             telemetry.uint32_tTelemetryPacket => {
                 const typ: type = u32;
                 _ = typ;
+
+                _ = c.igSelectable_Bool("", false, 0, c.ImVec2{ .x = 0, .y = 0 });
+                if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
+                    _ = c.igSetDragDropPayload("u32", @ptrCast(@constCast(&packet.pointer)), @sizeOf(*anyopaque), c.ImGuiCond_Once);
+
+                    std.debug.print("ptr {}\n", .{@as(*u32, packet.pointer).*});
+                    c.igTextUnformatted("test", "");
+                    c.igEndDragDropSource();
+                }
+                c.igSameLine(0, 0);
                 _ = c.igInputInt("test", @ptrCast(@alignCast(packet.pointer)), 0, 0, 0);
             },
             telemetry.floatTelemetryPacket => {
@@ -279,13 +292,72 @@ fn list() void {
     c.igEnd();
 }
 
+var testptr: u32 = 0;
+
+const Plot = struct {
+    const Self = @This();
+    paused: bool,
+    payloadptr: *u32,
+
+    pub fn init() Self {
+        return .{
+            .paused = false,
+            .payloadptr = &testptr,
+        };
+    }
+
+    pub fn update(self: *Self) void {
+        const currentTime: f64 = @as(f64, @floatFromInt(std.time.microTimestamp())) / 1e6;
+
+        if (c.igBegin("Plot", null, 0)) {
+            if (c.ImPlot_BeginPlot("test", c.ImVec2{ .x = -1, .y = -50 }, 0)) {
+                c.ImPlot_SetupAxes("Time", "", 0, 0);
+
+                c.ImPlot_SetupAxisLimits(0, currentTime - 10, currentTime, c.ImPlotCond_Once);
+                c.ImPlot_SetupAxisScale_PlotScale(c.ImAxis_X1, c.ImPlotScale_Time);
+
+                if (!self.paused) {
+                    var pout: c.ImPlotRect = undefined;
+                    c.ImPlot_GetPlotLimits(&pout, c.ImAxis_X1, c.ImAxis_Y1);
+                    const range = pout.X.Max - pout.X.Min;
+                    c.ImPlotAxis_SetRange_double(&c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1], currentTime - range, currentTime);
+                }
+
+                if (c.ImPlot_BeginDragDropTargetPlot()) {
+                    self.payloadptr = @ptrCast(@alignCast(c.igAcceptDragDropPayload("u32", c.ImGuiDragDropFlags_None).*.Data));
+
+                    std.debug.print("{}\n", .{self.payloadptr.*});
+                    c.ImPlot_EndDragDropTarget();
+                }
+
+                c.ImPlot_EndPlot();
+
+                if (self.paused) {
+                    c.igPushStyleColor_Vec4(c.ImGuiCol_Button, c.ImVec4{ .x = 0, .y = 0, .z = 0, .w = 0.5 });
+                } else {
+                    c.igPushStyleColor_Vec4(c.ImGuiCol_Button, c.ImVec4{ .x = 0, .y = 0, .z = 0, .w = 0 });
+                }
+
+                if (c.igButton("Pause", c.ImVec2{ .x = -1, .y = -1 })) {
+                    self.paused = !self.paused;
+                }
+
+                c.igPopStyleColor(1);
+            }
+        }
+        c.igEnd();
+    }
+};
+
+var testPlot: Plot = Plot.init();
+
 fn update() void {
     if (c.igBegin("test", null, 0)) {}
 
+    c.igEnd();
     instance.update();
-    c.ImPlot_ShowDemoWindow(&open);
+
+    testPlot.update();
 
     list();
-
-    c.igEnd();
 }
