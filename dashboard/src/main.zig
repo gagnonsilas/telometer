@@ -237,9 +237,36 @@ var updatesDecay: [telemetry.TelemetryPacketCount]f32 = std.mem.zeroes([telemetr
 
 // const IntDragDrop = struct { "" };
 
+fn displayFloat(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
+    const cast_data: *dataType = @ptrCast(@alignCast(data));
+    var value: f32 = std.math.lossyCast(f32, cast_data.*);
+
+    if (c.igInputFloat(name, &value, 0, 0, "%1f", c.ImGuiInputTextFlags_None)) {
+        cast_data.* = std.math.lossyCast(dataType, value);
+        return true;
+    }
+
+    return false;
+}
+
+fn displayInt(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
+    const castData: *dataType = @ptrCast(@alignCast(data));
+    var value: c_int = @truncate(@as(i64, @intCast(castData.*)));
+
+    if (c.igInputInt(name, &value, 0, 0, c.ImGuiInputTextFlags_EnterReturnsTrue)) {
+        castData.* = std.math.lossyCast(dataType, value);
+        return true;
+    }
+
+    return false;
+}
+
 fn list() void {
     if (c.igBegin("data", null, 0)) {}
-    for (instance.packet_struct, 0..) |*packet, i| {
+
+    inline for (@typeInfo(telemetry.TelemetryTypes).Struct.fields, 0..) |packetType, i| {
+        const packet: *tm.Data = &instance.packet_struct[i];
+
         updatesDecay[i] *= 0.99;
 
         if (packet.received) {
@@ -264,35 +291,51 @@ fn list() void {
         }
         c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
 
-        switch (packet.type) {
-            telemetry.uint32_tTelemetryPacket => {
-                const typ: type = u32;
-                _ = typ;
+        // const info = @typeInfo(packetType.type);
 
-                _ = c.igSelectable_Bool("", false, 0, c.ImVec2{ .x = 0, .y = 0 });
-                if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
-                    _ = c.igSetDragDropPayload("u32", @ptrCast(@constCast(&packet.pointer)), @sizeOf(*anyopaque), c.ImGuiCond_Once);
+        switch (@typeInfo(packetType.type)) {
+            .Struct => |struct_type| {
+                // std.debug.print("struct {s}\n", .{thing.fields});
 
-                    std.debug.print("ptr {}\n", .{@as(*u32, packet.pointer).*});
-                    c.igTextUnformatted("test", "");
-                    c.igEndDragDropSource();
+                const max_fields = 3;
+                const fields: f32 = @min(struct_type.fields.len, max_fields);
+                c.igPushItemWidth((c.igCalcItemWidth() - c.igGetStyle().*.ItemInnerSpacing.x) / fields);
+
+                inline for (struct_type.fields, 0..) |field, j| {
+                    if (j >= max_fields) {
+                        break;
+                    }
+
+                    switch (@typeInfo(field.type)) {
+                        .Int => {
+                            if (displayInt("##" ++ field.name, &@field(@as(*packetType.type, @ptrCast(@alignCast(packet.pointer))).*, field.name), field.type)) packet.queued = true;
+                        },
+                        .Float => {
+                            if (displayFloat("##" ++ field.name, &@field(@as(*packetType.type, @ptrCast(@alignCast(packet.pointer))).*, field.name), field.type)) packet.queued = true;
+                        },
+                        else => {},
+                    }
+                    c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
                 }
-                c.igSameLine(0, 0);
-                _ = c.igInputInt("test", @ptrCast(@alignCast(packet.pointer)), 0, 0, 0);
+                c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
+                c.igPopItemWidth();
             },
-            telemetry.floatTelemetryPacket => {
-                const typ: type = @Vector(3, f32);
-                _ = typ;
-                _ = c.igInputFloat("test", @ptrCast(@alignCast(packet.pointer)), 0, 0, "%.3f", 0);
+            .Int => {
+                if (displayInt(packetType.name, packet.pointer, packetType.type)) packet.queued = true;
             },
-            else => {},
+            .Float => {
+                if (displayFloat(packetType.name, packet.pointer, packetType.type)) packet.queued = true;
+            },
+            else => {
+                c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
+            },
         }
     }
 
     c.igEnd();
 }
 
-var testptr: u32 = 0;
+var testptr: u32 = 10;
 
 const Plot = struct {
     const Self = @This();
@@ -324,11 +367,13 @@ const Plot = struct {
                 }
 
                 if (c.ImPlot_BeginDragDropTargetPlot()) {
-                    self.payloadptr = @ptrCast(@alignCast(c.igAcceptDragDropPayload("u32", c.ImGuiDragDropFlags_None).*.Data));
+                    if (c.igAcceptDragDropPayload("u32", c.ImGuiDragDropFlags_None)) |dataPtr| {
+                        self.payloadptr = @as(**u32, @ptrCast(@alignCast(dataPtr.*.Data))).*;
+                    }
 
-                    std.debug.print("{}\n", .{self.payloadptr.*});
                     c.ImPlot_EndDragDropTarget();
                 }
+                // std.debug.print("{}\n", .{@as(u32, self.payloadptr.*)});
 
                 c.ImPlot_EndPlot();
 
