@@ -171,6 +171,7 @@ pub fn main() !void {
 
     // NOTE: you have to use the c allocator bc ImGui will try to free it...
     const dejavu = try std.heap.c_allocator.dupe(u8, @embedFile("fonts/DejavuSansMono-5m7L.ttf"));
+    // const dejavu = try std.heap.c_allocator.dupe(u8, @embedFile("fonts/Slugs Racer.ttf"));
 
     _ = c.ImFontAtlas_AddFontFromMemoryTTF(io.*.Fonts, @ptrCast(dejavu), @intCast(dejavu.len), 16, c.ImFontConfig_ImFontConfig(), null);
 
@@ -293,34 +294,41 @@ fn list() void {
         }
         c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
 
-        // const info = @typeInfo(packetType.type);
-
         switch (@typeInfo(packetType.type)) {
             .Struct => |struct_type| {
                 // std.debug.print("struct {s}\n", .{thing.fields});
 
                 const max_fields = 3;
                 const fields: f32 = @min(struct_type.fields.len, max_fields);
-                c.igPushItemWidth((c.igCalcItemWidth() / fields) - c.igGetStyle().*.ItemInnerSpacing.x / 2);
+                _ = fields;
 
-                inline for (struct_type.fields, 0..) |field, j| {
-                    if (j >= max_fields) {
-                        break;
-                    }
+                c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x * 2);
 
-                    switch (@typeInfo(field.type)) {
-                        .Int => {
-                            if (displayInt("##" ++ field.name, &@field(@as(*packetType.type, @ptrCast(@alignCast(packet.pointer))).*, field.name), field.type)) packet.queued = true;
-                        },
-                        .Float => {
-                            if (displayFloat("##" ++ field.name, &@field(@as(*packetType.type, @ptrCast(@alignCast(packet.pointer))).*, field.name), field.type)) packet.queued = true;
-                        },
-                        else => {},
+                if (c.igTreeNode_Str(packetType.name)) {
+                    c.igPushItemWidth(c.igCalcItemWidth() * 0.8);
+                    inline for (struct_type.fields, 0..) |field, j| {
+                        // c.igNewLine();
+                        // c.igSameLine(0.0, c.igCalcItemWidth() * 0.1);
+                        if (j >= max_fields) {
+                            break;
+                        }
+
+                        switch (@typeInfo(field.type)) {
+                            .Int => {
+                                if (displayInt(field.name, &@field(@as(*packetType.type, @ptrCast(@alignCast(packet.pointer))).*, field.name), field.type)) packet.queued = true;
+                            },
+                            .Float => {
+                                if (displayFloat(field.name, &@field(@as(*packetType.type, @ptrCast(@alignCast(packet.pointer))).*, field.name), field.type)) packet.queued = true;
+                            },
+                            else => {},
+                        }
                     }
-                    c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+                    c.igPopItemWidth();
+                    c.igTreePop();
                 }
-                c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
-                c.igPopItemWidth();
+
+                // c.igPopItemWidth();
+                // c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
             },
             .Int => {
                 if (displayInt(packetType.name, packet.pointer, packetType.type)) packet.queued = true;
@@ -341,6 +349,9 @@ fn list() void {
                     c.igEndDragDropSource();
                 }
             },
+            // .Bool => {
+            //     // _ = c.igCheckbox("##" ++ packetType.name, @ptrCast(@alignCast(packet.pointer)));
+            // },
             else => {
                 c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
             },
@@ -362,6 +373,7 @@ const PlotData = struct {
 
     pub fn initData(self: *Self, allocator: std.mem.Allocator, timestamp: f64) void {
         self.data = std.ArrayList(DataStruct).initCapacity(allocator, 1 << 14) catch unreachable;
+        self.data.append(DataStruct{ .value = self.pointer.*, .time = timestamp }) catch unreachable;
         self.data.append(DataStruct{ .value = self.pointer.*, .time = timestamp }) catch unreachable;
     }
 
@@ -426,6 +438,7 @@ const Plot = struct {
                     }
                     c.ImPlot_EndDragDropTarget();
                 }
+
                 for (self.data_pointers.items) |*data| {
                     if (!self.paused) {
                         data.update(current_time);
@@ -465,6 +478,8 @@ fn update() void {
 
     c.igEnd();
     instance.update();
+
+    c.igShowDemoWindow(null);
 
     test_plot.update();
 
