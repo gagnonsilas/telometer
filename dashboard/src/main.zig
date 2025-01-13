@@ -124,6 +124,7 @@ pub fn main() !void {
         backend,
         &packets,
     );
+    @as(*bool, @ptrCast(@alignCast(packets.test6.pointer))).* = false;
 
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
         return error.GLFWInitFailed;
@@ -241,7 +242,7 @@ fn displayFloat(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
     const cast_data: *dataType = @ptrCast(@alignCast(data));
     var value: f32 = std.math.lossyCast(f32, cast_data.*);
 
-    if (c.igInputFloat(name, &value, 0, 0, "%1f", c.ImGuiInputTextFlags_None)) {
+    if (c.igInputFloat(name, &value, 0, 0, "%1f", c.ImGuiInputTextFlags_EnterReturnsTrue)) {
         cast_data.* = std.math.lossyCast(dataType, value);
         return true;
     }
@@ -262,6 +263,7 @@ fn displayInt(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
 }
 
 var drag_drop_payload: PlotData = undefined;
+var my_bool: bool = false;
 
 fn list() void {
     if (c.igBegin("data", null, 0)) {}
@@ -293,9 +295,8 @@ fn list() void {
         }
         c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
 
-        // const info = @typeInfo(packetType.type);
-
-        switch (@typeInfo(packetType.type)) {
+        const info = @typeInfo(packetType.type);
+        switch (info) {
             .Struct => |struct_type| {
                 // std.debug.print("struct {s}\n", .{thing.fields});
 
@@ -323,16 +324,26 @@ fn list() void {
                 c.igPopItemWidth();
             },
             .Int => {
-                if (displayInt(packetType.name, packet.pointer, packetType.type)) packet.queued = true;
+                if (displayInt("##" ++ packetType.name, packet.pointer, packetType.type)) packet.queued = true;
             },
             .Float => {
                 if (displayFloat("##" ++ packetType.name, packet.pointer, packetType.type)) packet.queued = true;
+            },
+            .Bool => {
+                if (c.igCheckbox("##" ++ packetType.name, @ptrCast(@alignCast(packet.pointer)))) packet.queued = true;
+            },
+            else => {
+                c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
+            },
+        }
+        switch (info) {
+            .Int, .Float, .Bool => {
                 c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
                 _ = c.igSelectable_Bool(packetType.name, false, 0, c.ImVec2{ .x = 0, .y = 0 });
 
                 if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
                     drag_drop_payload = PlotData{
-                        .pointer = @ptrCast(@alignCast(packet.pointer)),
+                        .pointer = @unionInit(PlotValue, @typeName(packetType.type), @ptrCast(@alignCast(packet.pointer))),
                         .updated = &packet.received,
                         .name = packetType.name,
                     };
@@ -341,20 +352,52 @@ fn list() void {
                     c.igEndDragDropSource();
                 }
             },
-            else => {
-                c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
-            },
+            else => {},
         }
     }
 
     c.igEnd();
 }
 
+const PlotValue = union(enum) {
+    f64: *f64,
+    f32: *f32,
+    u8: *u8,
+    i8: *i8,
+    u16: *u16,
+    i16: *i16,
+    u32: *u32,
+    i32: *i32,
+    u64: *u64,
+    i64: *i64,
+    bool: *bool,
+
+    pub fn get_float(self: PlotValue) f64 {
+        return switch (self) {
+            inline else => |s| {
+                const info = @typeInfo(@typeInfo(@TypeOf(s)).Pointer.child);
+                switch (info) {
+                    .Float => {
+                        return @floatCast(s.*);
+                    },
+                    .Int => {
+                        return @floatFromInt(s.*);
+                    },
+                    .Bool => {
+                        return @floatFromInt(@intFromBool(s.*));
+                    },
+                    else => unreachable,
+                }
+            },
+        };
+    }
+};
+
 const PlotData = struct {
     const Self = @This();
     const DataStruct = struct { value: f64, time: f64 };
     const max_len = 1 << 14;
-    pointer: *f32,
+    pointer: PlotValue,
     updated: *bool,
     name: [*c]const u8,
     offset: i32 = 0,
@@ -362,7 +405,7 @@ const PlotData = struct {
 
     pub fn initData(self: *Self, allocator: std.mem.Allocator, timestamp: f64) void {
         self.data = std.ArrayList(DataStruct).initCapacity(allocator, 1 << 14) catch unreachable;
-        self.data.append(DataStruct{ .value = self.pointer.*, .time = timestamp }) catch unreachable;
+        self.data.append(DataStruct{ .value = self.pointer.get_float(), .time = timestamp }) catch unreachable;
     }
 
     pub fn update(self: *Self, timestamp: f64) void {
@@ -370,14 +413,14 @@ const PlotData = struct {
 
         self.get_value(-1).time = timestamp;
 
-        if (self.updated.*) {
-            self.get_value(-1).value = @floatCast(self.pointer.*);
+        if (self.updated.* or true) {
+            self.get_value(-1).value = self.pointer.get_float();
 
             if (length < max_len) {
-                self.data.append(DataStruct{ .value = @floatCast(self.pointer.*), .time = timestamp }) catch unreachable;
+                self.data.append(DataStruct{ .value = self.pointer.get_float(), .time = timestamp }) catch unreachable;
             } else {
                 self.offset += 1;
-                self.get_value(-1).* = DataStruct{ .value = @floatCast(self.pointer.*), .time = timestamp };
+                self.get_value(-1).* = DataStruct{ .value = self.pointer.get_float(), .time = timestamp };
             }
         }
     }
