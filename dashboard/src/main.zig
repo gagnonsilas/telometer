@@ -26,7 +26,7 @@ var backend = serialbackend.init();
 var packets: telemetry.TelemetryPackets = undefined;
 var instance: tm.TelometerInstance(serialbackend, telemetry.TelemetryPackets) = undefined;
 
-pub fn dispValues() void {}
+var test_plot: Plot = undefined;
 
 fn theme_fluent() void {
     // var io = c.igGetIO();
@@ -114,7 +114,7 @@ pub fn main() !void {
         if (deinit_status == .leak) @panic("TEST FAIL");
     }
 
-    _ = allocator; // autofix
+    test_plot = Plot.init(allocator);
 
     try backend.openSerial("/dev/ttyUSB0");
 
@@ -261,6 +261,8 @@ fn displayInt(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
     return false;
 }
 
+var drag_drop_payload: PlotData = undefined;
+
 fn list() void {
     if (c.igBegin("data", null, 0)) {}
 
@@ -299,7 +301,7 @@ fn list() void {
 
                 const max_fields = 3;
                 const fields: f32 = @min(struct_type.fields.len, max_fields);
-                c.igPushItemWidth((c.igCalcItemWidth() - c.igGetStyle().*.ItemInnerSpacing.x) / fields);
+                c.igPushItemWidth((c.igCalcItemWidth() / fields) - c.igGetStyle().*.ItemInnerSpacing.x / 2);
 
                 inline for (struct_type.fields, 0..) |field, j| {
                     if (j >= max_fields) {
@@ -324,7 +326,20 @@ fn list() void {
                 if (displayInt(packetType.name, packet.pointer, packetType.type)) packet.queued = true;
             },
             .Float => {
-                if (displayFloat(packetType.name, packet.pointer, packetType.type)) packet.queued = true;
+                if (displayFloat("##" ++ packetType.name, packet.pointer, packetType.type)) packet.queued = true;
+                c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+                _ = c.igSelectable_Bool(packetType.name, false, 0, c.ImVec2{ .x = 0, .y = 0 });
+
+                if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
+                    drag_drop_payload = PlotData{
+                        .pointer = @ptrCast(@alignCast(packet.pointer)),
+                        .updated = &packet.received,
+                        .name = packetType.name,
+                    };
+                    _ = c.igSetDragDropPayload("f32", &drag_drop_payload, @sizeOf(PlotData), c.ImGuiCond_Once);
+                    c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
+                    c.igEndDragDropSource();
+                }
             },
             else => {
                 c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
@@ -335,46 +350,97 @@ fn list() void {
     c.igEnd();
 }
 
-var testptr: u32 = 10;
+const PlotData = struct {
+    const Self = @This();
+    const DataStruct = struct { value: f64, time: f64 };
+    const max_len = 1 << 14;
+    pointer: *f32,
+    updated: *bool,
+    name: [*c]const u8,
+    offset: i32 = 0,
+    data: std.ArrayList(DataStruct) = undefined,
+
+    pub fn initData(self: *Self, allocator: std.mem.Allocator, timestamp: f64) void {
+        self.data = std.ArrayList(DataStruct).initCapacity(allocator, 1 << 14) catch unreachable;
+        self.data.append(DataStruct{ .value = self.pointer.*, .time = timestamp }) catch unreachable;
+    }
+
+    pub fn update(self: *Self, timestamp: f64) void {
+        const length = self.data.items.len;
+
+        self.get_value(-1).time = timestamp;
+
+        if (self.updated.*) {
+            self.get_value(-1).value = @floatCast(self.pointer.*);
+
+            if (length < max_len) {
+                self.data.append(DataStruct{ .value = @floatCast(self.pointer.*), .time = timestamp }) catch unreachable;
+            } else {
+                self.offset += 1;
+                self.get_value(-1).* = DataStruct{ .value = @floatCast(self.pointer.*), .time = timestamp };
+            }
+        }
+    }
+
+    pub fn get_value(self: *Self, index: i32) *DataStruct {
+        const length = self.data.items.len;
+        return &self.data.items[@intCast(@mod((self.offset + index), @as(i32, @intCast(length))))];
+    }
+};
 
 const Plot = struct {
     const Self = @This();
     paused: bool,
-    payloadptr: *u32,
+    data_pointers: std.ArrayList(PlotData),
+    allocator: std.mem.Allocator,
 
-    pub fn init() Self {
+    pub fn init(allocator: std.mem.Allocator) Self {
         return .{
             .paused = false,
-            .payloadptr = &testptr,
+            .data_pointers = std.ArrayList(PlotData).init(allocator),
+            .allocator = allocator,
         };
     }
 
     pub fn update(self: *Self) void {
-        const currentTime: f64 = @as(f64, @floatFromInt(std.time.microTimestamp())) / 1e6;
+        const current_time: f64 = @as(f64, @floatFromInt(std.time.microTimestamp())) / 1e6;
 
         if (c.igBegin("Plot", null, 0)) {
             if (c.ImPlot_BeginPlot("test", c.ImVec2{ .x = -1, .y = -50 }, 0)) {
                 c.ImPlot_SetupAxes("Time", "", 0, 0);
 
-                c.ImPlot_SetupAxisLimits(0, currentTime - 10, currentTime, c.ImPlotCond_Once);
+                c.ImPlot_SetupAxisLimits(0, current_time - 10, current_time, c.ImPlotCond_Once);
                 c.ImPlot_SetupAxisScale_PlotScale(c.ImAxis_X1, c.ImPlotScale_Time);
 
                 if (!self.paused) {
                     var pout: c.ImPlotRect = undefined;
                     c.ImPlot_GetPlotLimits(&pout, c.ImAxis_X1, c.ImAxis_Y1);
                     const range = pout.X.Max - pout.X.Min;
-                    c.ImPlotAxis_SetRange_double(&c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1], currentTime - range, currentTime);
+                    c.ImPlotAxis_SetRange_double(&c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1], current_time - range, current_time);
                 }
 
                 if (c.ImPlot_BeginDragDropTargetPlot()) {
-                    if (c.igAcceptDragDropPayload("u32", c.ImGuiDragDropFlags_None)) |dataPtr| {
-                        self.payloadptr = @as(**u32, @ptrCast(@alignCast(dataPtr.*.Data))).*;
+                    if (c.igAcceptDragDropPayload("f32", c.ImGuiDragDropFlags_None)) |payload| {
+                        self.data_pointers.append(@as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
+                        self.data_pointers.items[self.data_pointers.items.len - 1].initData(self.allocator, current_time);
                     }
-
                     c.ImPlot_EndDragDropTarget();
                 }
-                // std.debug.print("{}\n", .{@as(u32, self.payloadptr.*)});
+                for (self.data_pointers.items) |*data| {
+                    if (!self.paused) {
+                        data.update(current_time);
+                    }
 
+                    c.ImPlot_PlotLine_doublePtrdoublePtr(
+                        data.name,
+                        &data.data.items[0].time,
+                        &data.data.items[0].value,
+                        @intCast(data.data.items.len),
+                        c.ImPlotLineFlags_None,
+                        data.offset,
+                        @intCast(@sizeOf(f64) * 2),
+                    );
+                }
                 c.ImPlot_EndPlot();
 
                 if (self.paused) {
@@ -394,15 +460,13 @@ const Plot = struct {
     }
 };
 
-var testPlot: Plot = Plot.init();
-
 fn update() void {
     if (c.igBegin("test", null, 0)) {}
 
     c.igEnd();
     instance.update();
 
-    testPlot.update();
+    test_plot.update();
 
     list();
 }

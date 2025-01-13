@@ -90,7 +90,7 @@ pub fn SerialBackend() type {
                 if (available < @sizeOf(@TypeOf(ALIGNMENT)))
                     return null;
 
-                // std.debug.print("{c}", .{rx[0]});
+                std.debug.print("{c}", .{rx[0]});
                 for (rx, 0..) |value, i| {
                     if (i > 0)
                         rx[i - 1] = value;

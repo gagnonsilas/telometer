@@ -10,6 +10,7 @@
   P(N, test5, vec2f)                                                           \
   P(N, test6, bool)                                                            \
   P(N, test3, int32_t)                                                         \
+  P(N, float_numero_two, float)                                                         \
   P(N, test4, int8_t)
 
 #define PACKET_TYPES(P, N)                                                     \
@@ -25,6 +26,7 @@
 typedef struct vec2f {
   float x;
   float y;
+  int z;
 } vec2f;
 
 TELOMETER_INSTANCE(Telemetry, PACKET_TYPES, PACKETS)

@@ -8,7 +8,6 @@ pkgs.mkShell {
     zig
     zls
     compiledb
-    # compdb
     gcc
   ];
 }

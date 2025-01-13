@@ -33,7 +33,7 @@
     return (name##Packets){packets(PACKET_INIT, name)};                        \
   }                                                                            \
   struct name##Types {                                                         \
-    packets(TYPE_FORMAT, name)                                                \
+    packets(TYPE_FORMAT, name);                                                \
   };
 
 typedef struct TelometerData {
