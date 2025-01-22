@@ -25,10 +25,10 @@ typedef struct TelometerInstance {
   Data *packetStruct;
 } TelometerInstance;
 
-void init(TelometerInstance instance);
+void init(TelometerInstance *instance);
 void sendPacket(Data packet);
 void sendValue(Data packet, void *data);
 void debug(const char *string);
 
-void update(TelometerInstance instance);
+void update(TelometerInstance *instance);
 } // namespace Telometer

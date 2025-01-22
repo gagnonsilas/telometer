@@ -4,25 +4,25 @@
 
 namespace Telometer {
 
-void init(TelometerInstance instance) {}
+void init(TelometerInstance *instance) {}
 
-void update(TelometerInstance instance) {
+void update(TelometerInstance *instance) {
 
-  for (int i = 0; i < (int)instance.count; i++) {
-    instance.packetStruct[i].received = false;
+  for (int i = 0; i < (int)instance->count; i++) {
+    instance->packetStruct[i].received = false;
   }
 
-  for (int i = 0; i < (int)instance.count; i++) {
-    uint16_t currentId = (instance.nextPacket + i) % instance.count;
+  for (int i = 0; i < (int)instance->count; i++) {
+    uint16_t currentId = (instance->nextPacket + i) % instance->count;
 
-    Data *packet = &instance.packetStruct[currentId];
+    Data *packet = &instance->packetStruct[currentId];
 
-    if (packet->queued) {
+    if (!packet->queued) {
       continue;
     }
 
-    if (!instance.backend->writePacket({.id = currentId}, *packet)) {
-      instance.nextPacket = currentId;
+    if (!instance->backend->writePacket({.id = currentId}, *packet)) {
+      instance->nextPacket = currentId;
       break;
     }
 
@@ -31,27 +31,27 @@ void update(TelometerInstance instance) {
   }
 
   TelometerHeader header;
-  while (instance.backend->getNextHeader(&header)) {
+  while (instance->backend->getNextHeader(&header)) {
 
-    if (header.id >= instance.count) {
+    if (header.id >= instance->count) {
       debug("invalid header\n");
       continue;
     }
 
-    Data *packet = &instance.packetStruct[header.id];
+    Data *packet = &instance->packetStruct[header.id];
 
     if (packet->locked) {
       uint8_t *trashBin = (uint8_t *)alloca(packet->size);
-      instance.backend->read(trashBin, packet->size);
+      instance->backend->read(trashBin, packet->size);
       continue;
     }
 
-    instance.backend->read((uint8_t *)packet->pointer, packet->size);
+    instance->backend->read((uint8_t *)packet->pointer, packet->size);
 
     packet->received = true;
   }
 
-  instance.backend->update();
+  instance->backend->update();
 }
 
 // Log a value for a specific log ID

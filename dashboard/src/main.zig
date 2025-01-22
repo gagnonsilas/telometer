@@ -13,7 +13,7 @@ const UDPBackend = @import("udp.zig").UDPBackend();
 const serialbackend = @import("serial.zig").SerialBackend();
 
 const telemetry = @cImport({
-    @cInclude("Example.h");
+    @cInclude("Reflow.h");
 });
 
 fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
@@ -124,7 +124,7 @@ pub fn main() !void {
         backend,
         &packets,
     );
-    @as(*bool, @ptrCast(@alignCast(packets.test6.pointer))).* = false;
+    // @as(*bool, @ptrCast(@alignCast(packets.test6.pointer))).* = false;
 
     if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
         return error.GLFWInitFailed;
@@ -263,6 +263,59 @@ fn displayInt(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
     return false;
 }
 
+fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime parent_name: [:0]const u8, data: *ValueType, packet: *tm.Data) void {
+    const info = @typeInfo(ValueType);
+    const long_name = parent_name ++ name;
+    switch (info) {
+        .Struct => |struct_type| {
+            // std.debug.print("struct {s}\n", .{thing.fields});
+
+            // c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x * 2);
+
+            if (c.igTreeNode_Str(name)) {
+                c.igPushItemWidth(c.igCalcItemWidth() * 0.8);
+
+                inline for (struct_type.fields) |field| {
+                    displayValue(field.type, field.name, long_name ++ ".", &@field(data.*, field.name), packet);
+                }
+                c.igPopItemWidth();
+                c.igTreePop();
+            }
+        },
+        .Int => {
+            if (displayInt("##" ++ name, data, ValueType)) packet.queued = true;
+        },
+        .Float => {
+            if (displayFloat("##" ++ name, data, ValueType)) packet.queued = true;
+        },
+        .Bool => {
+            // if (c.igCheckbox("##" ++ name, @ptrCast(@alignCast(data)))) packet.queued = true;
+        },
+        else => {
+            c.igTextUnformatted(name, name.ptr + name.len);
+        },
+    }
+
+    switch (info) {
+        .Int, .Float, .Bool => {
+            c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+            _ = c.igSelectable_Bool(name, false, 0, c.ImVec2{ .x = 0, .y = 0 });
+
+            if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
+                drag_drop_payload = PlotData{
+                    .pointer = @unionInit(PlotValue, @typeName(ValueType), @ptrCast(@alignCast(data))),
+                    .updated = &packet.received,
+                    .name = long_name,
+                };
+                _ = c.igSetDragDropPayload("f32", &drag_drop_payload, @sizeOf(PlotData), c.ImGuiCond_Once);
+                c.igTextUnformatted(long_name, long_name.ptr + long_name.len);
+                c.igEndDragDropSource();
+            }
+        },
+        else => {},
+    }
+}
+
 var drag_drop_payload: PlotData = undefined;
 var my_bool: bool = false;
 
@@ -296,74 +349,7 @@ fn list() void {
         }
         c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
 
-        const info = @typeInfo(packetType.type);
-        switch (info) {
-            .Struct => |struct_type| {
-                // std.debug.print("struct {s}\n", .{thing.fields});
-
-                const max_fields = 3;
-                const fields: f32 = @min(struct_type.fields.len, max_fields);
-                _ = fields;
-
-                c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x * 2);
-
-                if (c.igTreeNode_Str(packetType.name)) {
-                    c.igPushItemWidth(c.igCalcItemWidth() * 0.8);
-                    inline for (struct_type.fields, 0..) |field, j| {
-                        // c.igNewLine();
-                        // c.igSameLine(0.0, c.igCalcItemWidth() * 0.1);
-                        if (j >= max_fields) {
-                            break;
-                        }
-
-                        switch (@typeInfo(field.type)) {
-                            .Int => {
-                                if (displayInt(field.name, &@field(@as(*packetType.type, @ptrCast(@alignCast(packet.pointer))).*, field.name), field.type)) packet.queued = true;
-                            },
-                            .Float => {
-                                if (displayFloat(field.name, &@field(@as(*packetType.type, @ptrCast(@alignCast(packet.pointer))).*, field.name), field.type)) packet.queued = true;
-                            },
-                            else => {},
-                        }
-                    }
-                    c.igPopItemWidth();
-                    c.igTreePop();
-                }
-
-                // c.igPopItemWidth();
-                // c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
-            },
-            .Int => {
-                if (displayInt("##" ++ packetType.name, packet.pointer, packetType.type)) packet.queued = true;
-            },
-            .Float => {
-                if (displayFloat("##" ++ packetType.name, packet.pointer, packetType.type)) packet.queued = true;
-            },
-            .Bool => {
-                if (c.igCheckbox("##" ++ packetType.name, @ptrCast(@alignCast(packet.pointer)))) packet.queued = true;
-            },
-            else => {
-                c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
-            },
-        }
-        switch (info) {
-            .Int, .Float, .Bool => {
-                c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
-                _ = c.igSelectable_Bool(packetType.name, false, 0, c.ImVec2{ .x = 0, .y = 0 });
-
-                if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
-                    drag_drop_payload = PlotData{
-                        .pointer = @unionInit(PlotValue, @typeName(packetType.type), @ptrCast(@alignCast(packet.pointer))),
-                        .updated = &packet.received,
-                        .name = packetType.name,
-                    };
-                    _ = c.igSetDragDropPayload("f32", &drag_drop_payload, @sizeOf(PlotData), c.ImGuiCond_Once);
-                    c.igTextUnformatted(packetType.name, packetType.name.ptr + packetType.name.len);
-                    c.igEndDragDropSource();
-                }
-            },
-            else => {},
-        }
+        displayValue(packetType.type, packetType.name, "", @ptrCast(@alignCast(packet.pointer)), packet);
     }
 
     c.igEnd();
@@ -380,6 +366,7 @@ const PlotValue = union(enum) {
     i32: *i32,
     u64: *u64,
     i64: *i64,
+    c_int: *c_int,
     bool: *bool,
 
     pub fn get_float(self: PlotValue) f64 {
@@ -406,7 +393,7 @@ const PlotValue = union(enum) {
 const PlotData = struct {
     const Self = @This();
     const DataStruct = struct { value: f64, time: f64 };
-    const max_len = 1 << 14;
+    const max_len = 1 << 15;
     pointer: PlotValue,
     updated: *bool,
     name: [*c]const u8,
@@ -414,7 +401,7 @@ const PlotData = struct {
     data: std.ArrayList(DataStruct) = undefined,
 
     pub fn initData(self: *Self, allocator: std.mem.Allocator, timestamp: f64) void {
-        self.data = std.ArrayList(DataStruct).initCapacity(allocator, 1 << 14) catch unreachable;
+        self.data = std.ArrayList(DataStruct).initCapacity(allocator, max_len) catch unreachable;
         self.data.append(DataStruct{ .value = self.pointer.get_float(), .time = timestamp }) catch unreachable;
         self.data.append(DataStruct{ .value = self.pointer.get_float(), .time = timestamp }) catch unreachable;
     }
@@ -424,7 +411,7 @@ const PlotData = struct {
 
         self.get_value(-1).time = timestamp;
 
-        if (self.updated.* or true) {
+        if (self.updated.*) {
             self.get_value(-1).value = self.pointer.get_float();
 
             if (length < max_len) {
@@ -441,6 +428,29 @@ const PlotData = struct {
         return &self.data.items[@intCast(@mod((self.offset + index), @as(i32, @intCast(length))))];
     }
 };
+
+var reflow_times = [_]f64{ 0, 3, 7, 11, 16, 20, 25, 30, 35, 39, 45, 54, 60, 66, 72, 79, 85, 93, 100, 107, 114, 123, 132, 141, 150, 158, 168, 175, 181, 187, 192, 202, 212, 207, 218, 225, 230, 237, 244, 250, 255, 259, 263, 266, 269, 272, 277, 283, 289, 295, 298, 301, 303 };
+const reflow_temps = [_]f64{ 25, 35, 48, 57, 67, 76, 85, 92, 97, 101, 107, 111, 115, 118, 120, 123, 126, 129, 132, 135, 138, 142, 147, 153, 160, 168, 180, 188, 196, 204, 211, 223, 233, 228, 240, 245, 248, 248, 247, 242, 235, 225, 216, 207, 198, 188, 172, 149, 123, 101, 92, 83, 78 };
+
+// const reflow_times: []f64 = []f64{ 0, 30, 120, 050, 210, 240 };
+// const reflow_temps: []f64 = []f64{ 77, 200, 300, 361, 455, 183 };
+
+var plot_reflow: bool = false;
+var reflow_start_time: f64 = 0;
+
+fn reflow() void {
+    if (c.igBegin("Reflow", null, 0)) {
+        _ = c.igCheckbox("Show Reflow Curve", &plot_reflow);
+        if (c.igButton("Start Reflow", c.ImVec2{ .x = 0, .y = 0 })) {
+            const new_start_time = @as(f64, @floatFromInt(std.time.microTimestamp())) / 1e6;
+            for (reflow_times, 0..) |time, i| {
+                reflow_times[i] = time - reflow_start_time + new_start_time;
+            }
+            reflow_start_time = new_start_time;
+        }
+    }
+    c.igEnd();
+}
 
 const Plot = struct {
     const Self = @This();
@@ -482,7 +492,7 @@ const Plot = struct {
                 }
 
                 for (self.data_pointers.items) |*data| {
-                    if (!self.paused) {
+                    if (c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1].Range.Max >= current_time) {
                         data.update(current_time);
                     }
 
@@ -496,6 +506,19 @@ const Plot = struct {
                         @intCast(@sizeOf(f64) * 2),
                     );
                 }
+
+                if (plot_reflow) {
+                    c.ImPlot_PlotLine_doublePtrdoublePtr(
+                        "reflow",
+                        &reflow_times,
+                        &reflow_temps,
+                        reflow_times.len,
+                        c.ImPlotFlags_None,
+                        0,
+                        @sizeOf(f64),
+                    );
+                }
+
                 c.ImPlot_EndPlot();
 
                 if (self.paused) {
@@ -520,6 +543,8 @@ fn update() void {
 
     c.igEnd();
     instance.update();
+
+    reflow();
 
     test_plot.update();
 
