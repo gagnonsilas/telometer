@@ -1,111 +1,110 @@
 const std = @import("std");
 const posix = std.posix;
-const zig_serial = @import("serial");
 
+const MAX_UDP_PACKET_SIZE = 1024;
 const tm = @import("telometer");
-
-const ALIGNMENT: u8 = 0xAA;
 
 pub fn CANBackend() type {
     return struct {
         const Self = @This();
+        udpSocket: posix.socket_t,
+        addr: posix.sockaddr,
 
-        serial: std.fs.File,
+        readBuffer: [MAX_UDP_PACKET_SIZE]u8,
+        readPointer: usize = 0,
+        writeBuffer: [MAX_UDP_PACKET_SIZE]u8,
+        readAvailable: usize = 0,
+        writePointer: usize = 0,
 
         pub fn init() Self {
             return .{
-                .serial = undefined,
+                .readBuffer = undefined,
+                .udpSocket = undefined,
+                .addr = undefined,
+                .readPointer = 0,
+                .writeBuffer = undefined,
+                .readAvailable = 0,
+                .writePointer = 0,
             };
         }
 
-        pub fn openSerial(self: *Self, addr: []const u8) !void {
-            // const cmd = [_][]const u8{ "stty", "-F", "/dev/serial/by-id/*", "raw", "speed", "115200", "-echo", "-echoe", "-echok", "-echoctl", "-echoke" };
+        pub fn openUDPSocket(self: *Self, port: u16) !void {
+            const local = try std.net.Address.parseIp("0.0.0.0", port);
+            self.udpSocket = try posix.socket(
+                posix.AF.CAN,
+                posix.SOCK.RAW,
+                posix.IPPROTO,
+            );
 
-            var iterator = try zig_serial.list();
-            defer iterator.deinit();
+            try posix.bind(self.udpSocket, &local.any, local.getOsSockLen());
 
-            while (try iterator.next()) |port| {
-                std.debug.print("path={s},\tname={s},\tdriver={s}\n", .{ port.file_name, port.display_name, port.driver orelse "<no driver recognized>" });
-            }
+            std.debug.print("udp openn\n", .{});
+        }
 
-            self.serial = std.fs.cwd().openFile(addr, .{ .mode = .read_write, .lock = .shared }) catch |err| switch (err) {
-                error.FileNotFound => {
-                    std.debug.print("Invalid config: the serial port '{s}' does not exist.\n", .{addr});
-                    return;
-                },
-                else => return err,
-            };
+        pub fn readNextUDPPacket(self: *Self) void {
+            const n_recv = posix.recvfrom(
+                self.udpSocket,
+                self.readBuffer[0..],
+                0,
+                null,
+                null,
+            ) catch return;
 
-            var flags = std.posix.fcntl(self.serial.handle, std.posix.F.GETFL, 0) catch unreachable;
-            flags |= std.posix.SOCK.NONBLOCK;
-            _ = std.posix.fcntl(self.serial.handle, std.posix.F.SETFL, flags) catch unreachable;
+            self.readPointer = 0;
+            self.readAvailable = n_recv;
+            std.debug.print(
+                "received {d} byte(s) : {s}",
+                .{ n_recv, self.readBuffer[0..n_recv] },
+            );
+        }
 
-            try zig_serial.configureSerialPort(self.serial, zig_serial.SerialConfig{
-                .baud_rate = 115200,
-                .word_size = .eight,
-                .parity = .none,
-                .stop_bits = .one,
-                .handshake = .none,
-            });
-
-            std.debug.print("serial openn\n", .{});
+        pub fn connect(self: *Self, addr: posix.sockaddr) void {
+            self.addr = addr;
         }
 
         pub fn update(self: *Self) void {
-            _ = self;
+            if (self.writePointer > 0) {
+                _ = posix.sendto(
+                    self.udpSocket,
+                    self.writeBuffer[0..self.writePointer],
+                    0,
+                    &self.addr,
+                    @sizeOf(posix.socklen_t),
+                ) catch {};
+                self.writePointer = 0;
+            }
+
+            self.readNextUDPPacket();
         }
 
         pub fn writePacket(self: *Self, header: tm.Header, data: tm.Data) bool {
-            self.serial.writer().writeStruct(header) catch unreachable;
-            self.serial.writer().writeByte(ALIGNMENT) catch unreachable;
-            self.serial.writer().writeAll(@as([*]u8, @ptrCast(data.pointer))[0..data.size]) catch unreachable;
+            @memcpy(self.writeBuffer[self.writePointer .. self.writePointer + @sizeOf(tm.Header)], @as([*]u8, @constCast(@ptrCast(&header))));
+            self.writePointer += @sizeOf(tm.Header);
+            @memcpy(self.writeBuffer[self.writePointer .. self.writePointer + data.size], @as([*]u8, @ptrCast(data.pointer)));
+            self.writePointer += data.size;
             return true;
         }
 
-        pub fn read(self: *Self, buffer: ?[*]u8, size: usize) !void {
+        pub fn read(self: *Self, buffer: ?[*]u8, size: usize) void {
             if (buffer) |buf| {
-                _ = try self.serial.reader().readAll(buf[0..size]);
-            } else {
-                try self.serial.seekBy(@intCast(size));
+                @memcpy(
+                    buf[0..size],
+                    self.readBuffer[self.readPointer .. self.readPointer + size],
+                );
             }
+            self.readPointer += size;
         }
 
         pub fn getNextHeader(self: *Self) ?tm.Header {
-            var available: usize = undefined;
-            available = 0;
-
-            var rx: [@sizeOf(tm.Header) + @sizeOf(@TypeOf(ALIGNMENT))]u8 = undefined;
-
-            _ = std.posix.system.ioctl(self.serial.handle, std.posix.system.T.FIONREAD, @intFromPtr(&available));
-            if (available < @sizeOf(@TypeOf(rx))) {
+            if (self.readAvailable - self.readPointer < @sizeOf(tm.Header))
                 return null;
-            }
-
-            self.read(@as([*]u8, @ptrCast(&rx)), rx.len) catch {
-                return undefined;
-            };
-
-            while (rx[@sizeOf(tm.Header)] != ALIGNMENT) {
-                _ = std.posix.system.ioctl(self.serial.handle, std.posix.system.T.FIONREAD, @intFromPtr(&available));
-                if (available < @sizeOf(@TypeOf(ALIGNMENT)))
-                    return null;
-
-                std.debug.print("{d} {c}\n", .{ rx[0], rx[0] });
-                for (rx, 0..) |value, i| {
-                    if (i > 0)
-                        rx[i - 1] = value;
-                }
-                self.read(@as([*]u8, @ptrCast(&rx[rx.len - 1])), 1) catch {
-                    return null;
-                };
-            }
-
-            const header: tm.Header = @bitCast(rx[0..@sizeOf(tm.Header)].*);
+            var header: tm.Header = undefined;
+            self.read(@as([*]u8, @ptrCast(&header)), @sizeOf(@TypeOf(header)));
             return header;
         }
 
         pub fn end(self: Self) void {
-            self.serial.close();
+            posix.close(self.updSocket);
         }
     };
 }
