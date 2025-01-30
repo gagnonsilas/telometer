@@ -411,7 +411,7 @@ const PlotData = struct {
 
         self.get_value(-1).time = timestamp;
 
-        if (self.updated.*) {
+        if (self.updated.* or true) {
             self.get_value(-1).value = self.pointer.get_float();
 
             if (length < max_len) {
