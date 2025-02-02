@@ -1,32 +1,44 @@
 {
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    # cimgui = {
-      
-    # };
+    # zig2nix.url = "github:Cloudef/zig2nix";
   };
-  outputs = { self, nixpkgs, flake-utils}:
+  outputs = { self, nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-      pkgs = import nixpkgs {
-        inherit system;
-      };
-  in {
-    dashboard = {header, main ? "./dashboard/main.zig"} : pkgs.stdenv.mkDerivation {
-      name = "telometer-dashboard";
-      src = builtins.path { name = "src"; path = ./.; };
+      pkgs = import nixpkgs { inherit system; };
+      # env = zig2nix.outputs.zig-env.${system} {};
 
-      nativeBuildInputs = [ pkgs.zig.hook ];
+  in with builtins; rec{
+     # packages.default;
+     dashboard =  pkgs.stdenv.mkDerivation rec{
+      type="app";
+      name = "telometer-dashboard-src";
+      # src = cleanSource ./.;
+      src = ./.;
+      # sourceRoot = ./dashboard;
+
+      nativeBuildInputs = with pkgs; [ zig.hook ];
 
       buildInputs = with pkgs; [
         SDL2
+        xorg.libX11
         pkg-config
-        zig
+        zlib
       ];
 
-      zigBuildFlags = [ "--build-file dashboard/build.zig" ];
-      dontUseZigCheck = true;
+      # dontConfigure = true;
+      dontInstall = true;
+
+      buildPhase = ''
+        NO_COLOR=1 # prevent escape codes from messing up the `nix log`
+        cd dashboard
+        PACKAGE_DIR=${pkgs.callPackage ./dashboard/deps.nix { zig = zig; }}
+        export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath buildInputs }
+        zig build --global-cache-dir $(pwd)/.cache --cache-dir $(pwd)/.zig-cache --system $PACKAGE_DIR -Dcpu=baseline --prefix $out
+      '';
     };
+
 
     devShells.default = pkgs.mkShell {
       name = "telometer";
@@ -36,7 +48,9 @@
         zig
         zls
         compiledb
-        (self.dashboard.x86_64-linux {header="../src/Example.h";})
+        self.dashboard.x86_64-linux
+        # (telometer-test{header="./src/Example.h";})
+        # env.pkgs.zon2nix
       ];
 
       shellHook = ''
@@ -44,5 +58,9 @@
       '';
     };
 
+
+    apps.telometer = (self.test.x86_64-linux {header="../src/Example.h";});
+
+    apps.default = apps.telometer.system;
   });
 }

@@ -106,7 +106,7 @@ pub fn build(b: *std.Build) void {
     zig_imgui.installHeader(cimplot_dep.path("cimplot.h"), "cimplot.h");
 
     const exe = b.addExecutable(.{
-        .name = "cimgui_zig",
+        .name = "telometer",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,

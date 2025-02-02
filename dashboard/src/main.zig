@@ -28,6 +28,8 @@ var instance: tm.TelometerInstance(serialbackend, telemetry.TelemetryPackets) = 
 
 var test_plot: Plot = undefined;
 
+const stdout = std.io.getStdOut().writer();
+
 fn theme_fluent() void {
     // var io = c.igGetIO();
 
@@ -411,8 +413,10 @@ const PlotData = struct {
 
         self.get_value(-1).time = timestamp;
 
-        if (self.updated.* or true) {
+        if (self.updated.*) {
             self.get_value(-1).value = self.pointer.get_float();
+
+            stdout.print("{}, {}\n", .{ timestamp, self.pointer.get_float() }) catch unreachable;
 
             if (length < max_len) {
                 self.data.append(DataStruct{ .value = self.pointer.get_float(), .time = timestamp }) catch unreachable;
@@ -491,6 +495,10 @@ const Plot = struct {
                     c.ImPlot_EndDragDropTarget();
                 }
 
+                // if (self.data_pointers.items.len > 0) {
+                //     std.debug.print("{},", .{current_time});
+                // }
+
                 for (self.data_pointers.items) |*data| {
                     if (c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1].Range.Max >= current_time) {
                         data.update(current_time);
@@ -506,6 +514,10 @@ const Plot = struct {
                         @intCast(@sizeOf(f64) * 2),
                     );
                 }
+
+                // if (self.data_pointers.items.len > 0) {
+                //     std.debug.print("\n", .{});
+                // }
 
                 if (plot_reflow) {
                     c.ImPlot_PlotLine_doublePtrdoublePtr(

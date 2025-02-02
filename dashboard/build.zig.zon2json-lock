@@ -1,0 +1,27 @@
+{
+  "12202b3fbdc2d6df12b531328cc74d9686abd0fbeb5807dddf559e9a03b11ae1fe26": {
+    "name": "cimgui",
+    "url": "git+https://github.com/cimgui/cimgui/#35a4e8f8932c6395156ffacee288b9c30e50cb63",
+    "hash": "sha256-aQuEf5PcAbMuob408CRXt/bl+rTMXr5nT2VwOc07h10="
+  },
+  "1220bc814165a4eca6230f318a1e801911fb5db7e4a2076c140eaec2e8f9dbf231d7": {
+    "name": "cimplot",
+    "url": "git+https://github.com/cimgui/cimplot#439f705b1cfae0e9fbe42c13ab5b45becc47d404",
+    "hash": "sha256-FrQYt72d7061vWGKwfmfIGYCqVb4h0BXiRxsJ2eWngM="
+  },
+  "12204aabb4ee82210f81a57bb6b8163062b5cbc775c13e36744dcc42b1e7c36bcf86": {
+    "name": "imgui",
+    "url": "git+https://github.com/ocornut/imgui#7b6314f47d2aaa3758cfeeca66af34f5c9309ca4",
+    "hash": "sha256-WgdZWVlbudHlDt3uZDRGQVA2x5xHuZsj3Zv5LhYErBI="
+  },
+  "1220ea199cadbb875be69fffeae45bb844577d1353a941690d09d658bd2ea4c371fc": {
+    "name": "implot",
+    "url": "git+https://github.com/epezent/implot#f156599faefe316f7dd20fe6c783bf87c8bb6fd9",
+    "hash": "sha256-+aYeQww8kql54tybGKi1LKbEQHm7RG1tetIBeiiXqE0="
+  },
+  "12205583d4fc231329bc966d65f9fd5dd4d6699e8d90fe0e662fd123fe496b064027": {
+    "name": "serial",
+    "url": "git+https://github.com/ZigEmbeddedGroup/serial#2db309014d2ac9865cc8d7753664829c86588fca",
+    "hash": "sha256-5a7eIFGhUlD9BpgHQdYU64uxmxIihoHjJtJj/r3UF4c="
+  }
+}
