@@ -50,7 +50,7 @@
 
             mkdir -p $out/lib
 
-            g++ -shared -fPIC -o $out/lib/telometer.so cpp/TelometerImpl.cpp -Icpp
+            g++ -shared -fPIC -o $out/lib/telometer.so cpp/TelometerImpl.cpp -Icpp -Isrc
 
             cp cpp/*.h $out/include
             cp src/Telometer.h $out/include
