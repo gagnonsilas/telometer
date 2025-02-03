@@ -9,7 +9,7 @@ pub const c = @cImport({
 });
 
 const tm = @import("telometer");
-const Backend = @import("serial.zig").Backend;
+const Backend = @import("backend.zig").Backend;
 
 const telemetry = @cImport({
     @cInclude("Packets.h");
