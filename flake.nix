@@ -1,5 +1,6 @@
 {
   inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
   outputs =
@@ -13,8 +14,6 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
-        # env = zig2nix.outputs.zig-env.${system} {};
-
       in
       with builtins;
       rec {
