@@ -49,15 +49,19 @@
             cd ..
 
             mkdir -p $out/lib
-            g++ -shared -fPIC -o $out/lib/telometer.so src/TelometerImpl.cpp -Icpp/
 
+            g++ -shared -fPIC -o $out/lib/telometer.so cpp/TelometerImpl.cpp -Icpp
+
+            cp cpp/*.h $out/include
+            cp src/Telometer.h $out/include
+            
             cp -r . $out
           '';
 
           env = {
-            NIX_CFLAGS_COMPILE = ''
-              -I$out/src/cpp"
-            '';
+            # NIX_CFLAGS_COMPILE = ''
+            #   -I$out/src/cpp"
+            # '';
           };
 
         };
@@ -102,6 +106,7 @@
           packages = with pkgs; [
             SDL2
             pkg-config
+            source
             zig
             zls
             compiledb
