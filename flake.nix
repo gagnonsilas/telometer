@@ -55,7 +55,7 @@
             cp cpp/*.h $out/include
             cp src/Telometer.h $out/include
             
-            cp -r . $out
+            cp -r . $out/src
           '';
 
           env = {
