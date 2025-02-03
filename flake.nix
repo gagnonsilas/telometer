@@ -19,8 +19,11 @@
       in
       with builtins;
       rec {
+
+        package_dir = pkgs.callPackage ./dashboard/deps.nix { zig = zig; };
+
         # packages.default;
-        dashboard = pkgs.stdenv.mkDerivation rec {
+        source = pkgs.stdenv.mkDerivation rec {
           type = "app";
           name = "telometer-dashboard-src";
           # src = cleanSource ./.;
@@ -41,7 +44,7 @@
           buildPhase = ''
             NO_COLOR=1 # prevent escape codes from messing up the `nix log`
             cd dashboard
-            PACKAGE_DIR=${pkgs.callPackage ./dashboard/deps.nix { zig = zig; }}
+            PACKAGE_DIR=${package_dir}
             export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath buildInputs}
             zig build --global-cache-dir $(pwd)/.cache --cache-dir $(pwd)/.zig-cache --system $PACKAGE_DIR -Dcpu=baseline --prefix $out
 
@@ -49,6 +52,39 @@
           '';
 
         };
+
+        telometer-build =
+          {
+            header,
+            main ? "test",
+          }:
+          pkgs.stdenv.mkDerivation {
+            name = "telometer";
+            srcs = [
+              source
+            ];
+            sourceRoot = source.name;
+
+            nativeBuildInputs = with pkgs; [ zig.hook ];
+
+            buildInputs = with pkgs; [
+              SDL2
+              xorg.libX11
+              pkg-config
+              zlib
+            ];
+
+            dontInstall = true;
+
+            buildPhase = ''
+              cp ${header} src/src/Packets.h
+              cd src/dashboard
+              PACKAGE_DIR=${pkgs.callPackage dashboard/deps.nix { zig = zig; }}
+              zig build --global-cache-dir $(pwd)/.cache --cache-dir $(pwd)/.zig-cache --system $PACKAGE_DIR -Dcpu=baseline --prefix $out
+            '';
+            # cat ${header}
+          };
+        packages.default = source;
 
         devShells.default = pkgs.mkShell {
           name = "telometer";
@@ -58,19 +94,12 @@
             zig
             zls
             compiledb
-            self.dashboard.x86_64-linux
-            # (telometer-test{header="./src/Example.h";})
-            # env.pkgs.zon2nix
           ];
 
           shellHook = ''
             exec zsh 
           '';
         };
-
-        apps.telometer = (self.test.x86_64-linux { header = "../src/Example.h"; });
-
-        apps.default = apps.telometer.system;
       }
     );
 }

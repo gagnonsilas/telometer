@@ -13,7 +13,7 @@ const UDPBackend = @import("udp.zig").UDPBackend();
 const serialbackend = @import("serial.zig").SerialBackend();
 
 const telemetry = @cImport({
-    @cInclude("Reflow.h");
+    @cInclude("Packets.h");
 });
 
 fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
