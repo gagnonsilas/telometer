@@ -1,7 +1,6 @@
 {
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    # zig2nix.url = "github:Cloudef/zig2nix";
   };
   outputs =
     {
