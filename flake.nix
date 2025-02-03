@@ -49,8 +49,9 @@
             cd ..
 
             mkdir -p $out/lib
-
-            g++ -shared -fPIC -o $out/lib/telometer.so cpp/TelometerImpl.cpp -Icpp -Isrc
+  
+            g++ -fPIC -o cpp/telometer.o -c cpp/TelometerImpl.cpp -Icpp -Isrc
+            g++ -shared -o $out/lib/telometer.so cpp/telometer.o -Icpp -Isrc
 
             cp cpp/*.h $out/include
             cp src/Telometer.h $out/include
