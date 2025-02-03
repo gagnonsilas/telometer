@@ -9,8 +9,7 @@ pub const c = @cImport({
 });
 
 const tm = @import("telometer");
-const UDPBackend = @import("udp.zig").UDPBackend();
-const serialbackend = @import("serial.zig").SerialBackend();
+const Backend = @import("serial.zig").Backend;
 
 const telemetry = @cImport({
     @cInclude("Packets.h");
@@ -22,9 +21,9 @@ fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
 
 const PORT = 62895;
 
-var backend = serialbackend.init();
+var backend: Backend = undefined;
 var packets: telemetry.TelemetryPackets = undefined;
-var instance: tm.TelometerInstance(serialbackend, telemetry.TelemetryPackets) = undefined;
+var instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets) = undefined;
 
 var test_plot: Plot = undefined;
 
@@ -118,10 +117,9 @@ pub fn main() !void {
 
     test_plot = Plot.init(allocator);
 
-    try backend.openSerial("/dev/ttyUSB0");
-
     packets = telemetry.initTelemetryPackets();
-    instance = try tm.TelometerInstance(serialbackend, telemetry.TelemetryPackets).init(
+    backend = Backend.init();
+    instance = try tm.TelometerInstance(Backend, telemetry.TelemetryPackets).init(
         std.heap.c_allocator,
         backend,
         &packets,
