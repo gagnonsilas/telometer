@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../src/Telometer.h"
+#include "Telometer.h"
 #include <cstddef>
 #include <cstdint>
 
