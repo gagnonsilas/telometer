@@ -54,6 +54,7 @@
         telometer-build =
           {
             header,
+            backend,
             main ? "test",
           }:
           pkgs.stdenv.mkDerivation {
@@ -76,6 +77,7 @@
 
             buildPhase = ''
               cp ${header} src/src/Packets.h
+              cp ${backend} src/dashboard/backend.zig
               cd src/dashboard
               PACKAGE_DIR=${pkgs.callPackage dashboard/deps.nix { zig = zig; }}
               zig build --global-cache-dir $(pwd)/.cache --cache-dir $(pwd)/.zig-cache --system $PACKAGE_DIR -Dcpu=baseline --prefix $out
