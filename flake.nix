@@ -23,7 +23,7 @@
         # packages.default;
         source = pkgs.stdenv.mkDerivation rec {
           type = "app";
-          name = "telometer-dashboard-src";
+          name = "telometer-src";
           # src = cleanSource ./.;
           src = ./.;
           # sourceRoot = ./dashboard;
@@ -46,8 +46,19 @@
             export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath buildInputs}
             zig build --global-cache-dir $(pwd)/.cache --cache-dir $(pwd)/.zig-cache --system $PACKAGE_DIR -Dcpu=baseline --prefix $out
 
-            cp -r ../ $out/src
+            cd ..
+
+            mkdir -p $out/lib
+            g++ -shared -fPIC -o $out/lib/telometer.so src/TelometerImpl.cpp -Icpp/
+
+            cp -r . $out
           '';
+
+          env = {
+            NIX_CFLAGS_COMPILE = ''
+              -I$out/src/cpp"
+            '';
+          };
 
         };
 
