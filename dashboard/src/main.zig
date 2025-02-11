@@ -8,6 +8,8 @@ pub const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
 
+const mat = @import("mat.zig");
+
 const tm = @import("telometer");
 const Backend = @import("backend.zig").Backend;
 
@@ -26,6 +28,7 @@ var packets: telemetry.TelemetryPackets = undefined;
 var instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets) = undefined;
 
 var test_plot: Plot = undefined;
+var plot_arm: PlotArm = undefined;
 
 const stdout = std.io.getStdOut().writer();
 
@@ -115,8 +118,6 @@ pub fn main() !void {
         if (deinit_status == .leak) @panic("TEST FAIL");
     }
 
-    test_plot = Plot.init(allocator);
-
     packets = telemetry.initTelemetryPackets();
     backend = Backend.init();
     instance = try tm.TelometerInstance(Backend, telemetry.TelemetryPackets).init(
@@ -190,6 +191,9 @@ pub fn main() !void {
 
     // std.debug.print("drag drop? {}\n", .{c.igIsDragDropActive()});
     // c.igDragDrop
+
+    test_plot = Plot.init(allocator);
+    plot_arm = PlotArm.init();
 
     const clear_color = c.ImVec4{ .x = 0.45, .y = 0.55, .z = 0.60, .w = 1.00 };
 
@@ -548,6 +552,100 @@ const Plot = struct {
     }
 };
 
+const PlotArm = struct {
+    const Self = @This();
+    cameraPos: mat.Vec3f,
+    cameraDir: mat.Vec3f,
+
+    fbo: u32,
+    texture: u32,
+
+    pub fn init() Self {
+        var self: Self = .{
+            .cameraPos = mat.Vec3f.new(.{ 1, 0, 0 }),
+            .cameraDir = mat.Vec3f.new(.{ 1, 0, 0 }),
+            .fbo = undefined,
+            .texture = undefined,
+        };
+        // matrix.vec4(1, 2, 3, 4);
+        c.glGenFramebuffers(1, &self.fbo);
+        c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.fbo);
+
+        c.glGenTextures(1, &self.texture);
+        c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+
+        c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGB, 800, 600, 0, c.GL_RGB, c.GL_UNSIGNED_BYTE, null);
+        c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_LINEAR);
+        c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_LINEAR);
+        c.glBindTexture(c.GL_TEXTURE_2D, 0);
+
+        c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
+
+        c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+
+        return self;
+    }
+
+    //TRIANGLE CREATION//
+
+    pub fn update(self: *Self) void {
+        // _ = self;
+
+        // const Tvertices = [_]f32{ -0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0 };
+
+        // var Tvbo: u32 = undefined;
+        // var Tvao: u32 = undefined;
+
+        // c.glGenVertexArrays(1, &Tvao);
+        // c.glGenBuffers(1, &Tvbo);
+        // c.glBindVertexArray(Tvao);
+        // c.glBindBuffer(c.GL_ARRAY_BUFFER, Tvbo);
+        // c.glBufferData(c.GL_ARRAY_BUFFER, Tvertices.len * @sizeOf(f32), &Tvertices[0], c.GL_STATIC_DRAW);
+        // c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3 * @sizeOf(f32), null);
+        // c.glEnableVertexAttribArray(0);
+        // c.glBindBuffer(c.GL_ARRAY_BUFFER, 0);
+
+        // c.glBindVertexArray(0);
+
+        if (c.igBegin("3dDisplay", null, 0)) {
+            const draw_list: [*c]c.ImDrawList = c.igGetWindowDrawList();
+            var start: c.ImVec2 = undefined;
+            c.igGetCursorScreenPos(&start);
+            var max: c.ImVec2 = undefined;
+            c.igGetContentRegionAvail(&max);
+
+            c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.fbo);
+            c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+
+            c.glClearColor(0.1, 0.1, 0.1, 0);
+
+            c.glClear(c.GL_COLOR_BUFFER_BIT);
+
+            c.glEnable(c.GL_DEPTH_TEST);
+            // glVertex3f(0, 0, 0);
+            // glVertex3f(1, 0, 0);
+            // glVertex3f(0, 1, 0);
+            // glEnd();
+
+            c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+
+            c.ImDrawList_AddImage(draw_list, @ptrFromInt(self.texture), start, .{ .x = start.x + max.x, .y = start.y + max.y }, .{ .x = 0, .y = 1 }, .{ .x = 1, .y = 0 }, 0xFFFFFFFF);
+
+            // c.ImDrawList_AddRectFilled(
+            //     draw_list,
+            //     start,
+            //     c.ImVec2{ .x = start.x + max.x, .y = start.y + max.y - 30 },
+            //     0xfafafaFF,
+            //     10,
+            //     c.ImDrawFlags_None,
+            // );
+
+            // std.debug.print("{}\n", .{self.cameraPos});
+        }
+        c.igEnd();
+    }
+};
+
 fn update() void {
     if (c.igBegin("test", null, 0)) {}
 
@@ -557,6 +655,7 @@ fn update() void {
     reflow();
 
     test_plot.update();
+    plot_arm.update();
 
     list();
 }
