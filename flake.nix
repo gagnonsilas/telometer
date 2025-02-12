@@ -107,7 +107,7 @@
           packages = with pkgs; [
             SDL2
             pkg-config
-            source
+            # source
             zig
             zls
             compiledb
