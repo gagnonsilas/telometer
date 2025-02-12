@@ -9,6 +9,7 @@ pub const c = @cImport({
 });
 
 const mat = @import("mat.zig");
+const math = std.math;
 
 const tm = @import("telometer");
 const Backend = @import("backend.zig").Backend;
@@ -554,91 +555,141 @@ const Plot = struct {
 
 const PlotArm = struct {
     const Self = @This();
-    cameraPos: mat.Vec3f,
-    cameraDir: mat.Vec3f,
-
-    fbo: u32,
-    texture: u32,
+    cameraTransform: mat.Mat(4, 4, f32),
+    drawList: [*c]c.ImDrawList,
+    start: c.ImVec2,
+    size: c.ImVec2,
+    bounds_x: f32,
+    bounds_y: f32,
+    sf: f32,
+    projectionRatio: f32,
 
     pub fn init() Self {
-        var self: Self = .{
-            .cameraPos = mat.Vec3f.new(.{ 1, 0, 0 }),
-            .cameraDir = mat.Vec3f.new(.{ 1, 0, 0 }),
-            .fbo = undefined,
-            .texture = undefined,
+        const cameraPos = mat.Vec3f.new(.{ 100, 100, 100 });
+        const cameraDir = mat.Vec3f.new(.{ -1, -1, -1 }).unit();
+        // const xy_dir = mat.Vec2f.new(.{ cameraDir.d[0], cameraDir.d[1] });
+        // const up_xy = xy_dir.unit().scale(-cameraDir.d[2]);
+
+        // std.debug.print("cameraDir: {}\nxy_dir: {}\nup_xy: {}\ntransform: {} \n", .{ cameraDir, xy_dir, up_xy, mat.translation_matrix(f32, cameraPos) });
+
+        // const transform_up: mat.Vec3f = mat.Vec3f.new(.{ up_xy.d[0], up_xy.d[1], xy_dir.norm() });
+        const sideways: mat.Vec3f = cameraDir.cross(mat.Vec3f.new(.{ 0, 0, 1 })).unit();
+        const transform_up: mat.Vec3f = sideways.cross(cameraDir);
+
+        const self: Self = .{
+            .cameraTransform = mat.Mat(4, 4, f32).new(.{
+                cameraDir.d[0], sideways.d[0], transform_up.d[0], 0.0,
+                cameraDir.d[1], sideways.d[1], transform_up.d[1], 0.0,
+                cameraDir.d[2], sideways.d[2], transform_up.d[2], 0.0,
+                0.0,            0.0,           0.0,               1.0,
+            }).transpose().mul(mat.translation_matrix(f32, cameraPos).inverse() orelse unreachable),
+
+            .drawList = undefined,
+            .start = undefined,
+            .size = undefined,
+            .bounds_x = 10,
+            .bounds_y = 10,
+            .projectionRatio = 5,
+            .sf = 0,
         };
-        // matrix.vec4(1, 2, 3, 4);
-        c.glGenFramebuffers(1, &self.fbo);
-        c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.fbo);
 
-        c.glGenTextures(1, &self.texture);
-        c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+        // std.debug.print("Camera Transform: {}\n", .{self.cameraTransform});
 
-        c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGB, 800, 600, 0, c.GL_RGB, c.GL_UNSIGNED_BYTE, null);
-        c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_LINEAR);
-        c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_LINEAR);
-        c.glBindTexture(c.GL_TEXTURE_2D, 0);
+        // const test2 = mat.Vec4f.new(.{ 0, 0, 0, 1 });
 
-        c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, c.GL_TEXTURE_2D, self.texture, 0);
-
-        c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+        // std.debug.print("test transform: {}\n", .{self.cameraTransform.mul(test2.col_matrix())});
 
         return self;
     }
 
-    //TRIANGLE CREATION//
+    pub fn toScreenSpace(self: Self, point: mat.Vec4f) mat.Vec2f {
+        return mat.Vec2f.new(.{
+            point.d[1] * self.projectionRatio / point.d[0] * self.sf + self.start.x + self.size.x / 2,
+            (self.start.y + self.size.y / 2) - point.d[2] * self.projectionRatio / point.d[0] * self.sf,
+        });
+    }
+
+    pub fn drawLine(self: Self, start: mat.Vec3f, end: mat.Vec3f, color: c.ImU32, thickness: f32) void {
+        // const transformSpace = mat.Mat(4, 1, f32).new(.{ start.d, 1 });
+        const cameraSpaceStart = self.cameraTransform.mul(mat.Mat(4, 1, f32).new(.{ start.d[0], start.d[1], start.d[2], 1 }));
+        const cameraSpaceEnd = self.cameraTransform.mul(mat.Mat(4, 1, f32).new(.{ end.d[0], end.d[1], end.d[2], 1 }));
+
+        const screenSpaceStart = self.toScreenSpace(mat.Vec4f.new(cameraSpaceStart.m));
+        const screenSpaceEnd = self.toScreenSpace(mat.Vec4f.new(cameraSpaceEnd.m));
+        c.ImDrawList_AddLine(self.drawList, .{ .x = screenSpaceStart.d[0], .y = screenSpaceStart.d[1] }, .{ .x = screenSpaceEnd.d[0], .y = screenSpaceEnd.d[1] }, color, thickness);
+    }
+
+    pub fn drawTransformMatrix(self: Self, matrix: mat.Mat(4, 4, f32), scale: f32) void {
+        const transform: mat.Vec3f = .{ .d = matrix.col(3).d[0..3].* };
+        for (0..3) |i| {
+            self.drawLine(transform, transform.add(mat.Vec3f.new(matrix.col(i).d[0..3].*).scale(scale)), (@as(u32, 0xFF) << @intCast(i * 8)) | 0xFF000000, scale / 10);
+        }
+    }
 
     pub fn update(self: *Self) void {
-        // _ = self;
-
-        // const Tvertices = [_]f32{ -0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0 };
-
-        // var Tvbo: u32 = undefined;
-        // var Tvao: u32 = undefined;
-
-        // c.glGenVertexArrays(1, &Tvao);
-        // c.glGenBuffers(1, &Tvbo);
-        // c.glBindVertexArray(Tvao);
-        // c.glBindBuffer(c.GL_ARRAY_BUFFER, Tvbo);
-        // c.glBufferData(c.GL_ARRAY_BUFFER, Tvertices.len * @sizeOf(f32), &Tvertices[0], c.GL_STATIC_DRAW);
-        // c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3 * @sizeOf(f32), null);
-        // c.glEnableVertexAttribArray(0);
-        // c.glBindBuffer(c.GL_ARRAY_BUFFER, 0);
-
-        // c.glBindVertexArray(0);
-
         if (c.igBegin("3dDisplay", null, 0)) {
-            const draw_list: [*c]c.ImDrawList = c.igGetWindowDrawList();
-            var start: c.ImVec2 = undefined;
-            c.igGetCursorScreenPos(&start);
-            var max: c.ImVec2 = undefined;
-            c.igGetContentRegionAvail(&max);
+            self.drawList = c.igGetWindowDrawList();
+            c.igGetCursorScreenPos(&self.start);
+            c.igGetContentRegionAvail(&self.size);
 
-            c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.fbo);
-            c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
+            if ((self.size.x * (self.bounds_y / self.bounds_x)) < self.size.y) {
+                // std.debug.print("toast? {}, {}, \n", .{ self.size.x * (self.bounds_y / self.size.y), self.size.y });
+                self.sf = self.size.x / (self.bounds_x);
+                self.start.y = self.start.y + (self.size.y - self.bounds_y * self.sf) / 2;
+            } else {
+                // std.debug.print("test?\n", .{});
+                self.sf = self.size.y / (self.bounds_y);
+                self.start.x = self.start.x + (self.size.x - self.bounds_x * self.sf) / 2;
+            }
 
-            c.glClearColor(0.1, 0.1, 0.1, 0);
+            self.size = .{ .x = self.bounds_x * self.sf, .y = self.bounds_y * self.sf };
 
-            c.glClear(c.GL_COLOR_BUFFER_BIT);
+            self.cameraTransform = self.cameraTransform.mul(mat.rotation_axis_angle(f32, mat.Vec3f.new(.{ 0, 0, 1 }), 0.005));
 
-            c.glEnable(c.GL_DEPTH_TEST);
-            // glVertex3f(0, 0, 0);
-            // glVertex3f(1, 0, 0);
-            // glVertex3f(0, 1, 0);
-            // glEnd();
+            c.ImDrawList_AddRectFilled(
+                self.drawList,
+                self.start,
+                c.ImVec2{ .x = self.start.x + self.size.x, .y = self.start.y + self.size.y - 30 },
+                0xFF101010,
+                10,
+                c.ImDrawFlags_None,
+            );
 
-            c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
+            c.ImDrawList_PushClipRect(
+                self.drawList,
+                self.start,
+                c.ImVec2{ .x = self.start.x + self.size.x, .y = self.start.y + self.size.y - 30 },
+                false,
+            );
+            defer c.ImDrawList_PopClipRect(self.drawList);
 
-            c.ImDrawList_AddImage(draw_list, @ptrFromInt(self.texture), start, .{ .x = start.x + max.x, .y = start.y + max.y }, .{ .x = 0, .y = 1 }, .{ .x = 1, .y = 0 }, 0xFFFFFFFF);
+            const gridLines: i32 = 10;
+            const spacing: f32 = 10;
 
-            // c.ImDrawList_AddRectFilled(
-            //     draw_list,
-            //     start,
-            //     c.ImVec2{ .x = start.x + max.x, .y = start.y + max.y - 30 },
-            //     0xfafafaFF,
-            //     10,
-            //     c.ImDrawFlags_None,
-            // );
+            for (0..gridLines * 2 + 1) |n| {
+                const i: i32 = @as(i32, @intCast(n)) - gridLines;
+                self.drawLine(
+                    mat.Vec3f.new(.{ @as(f32, @floatFromInt(i)) * spacing, @as(f32, @floatFromInt(gridLines)) * spacing, 0 }),
+                    mat.Vec3f.new(.{ @as(f32, @floatFromInt(i)) * spacing, -@as(f32, @floatFromInt(gridLines)) * spacing, 0 }),
+                    0x55FFFFFF,
+                    2,
+                );
+                self.drawLine(
+                    mat.Vec3f.new(.{ @as(f32, @floatFromInt(gridLines)) * spacing, @as(f32, @floatFromInt(i)) * spacing, 0 }),
+                    mat.Vec3f.new(.{ -@as(f32, @floatFromInt(gridLines)) * spacing, @as(f32, @floatFromInt(i)) * spacing, 0 }),
+                    0x55FFFFFF,
+                    2,
+                );
+            }
+
+            self.drawTransformMatrix(mat.Mat(4, 4, f32).identity(), 10);
+            // self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 10, 0, 0 }), 0xFF0000FF, 2);
+            // self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 0, 10, 0 }), 0xFF00FF00, 2);
+            // self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 0, 0, 10 }), 0xFFFF0000, 2);
+
+            self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 0, 0, 10 }), 0xFFFF0000, 2);
+
+            self.drawTransformMatrix(mat.translation_matrix(f32, mat.Vec3f.new(.{ 0, 0, 30 })), 20);
 
             // std.debug.print("{}\n", .{self.cameraPos});
         }
