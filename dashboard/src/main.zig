@@ -683,9 +683,6 @@ const PlotArm = struct {
             }
 
             self.drawTransformMatrix(mat.Mat(4, 4, f32).identity(), 10);
-            // self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 10, 0, 0 }), 0xFF0000FF, 2);
-            // self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 0, 10, 0 }), 0xFF00FF00, 2);
-            // self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 0, 0, 10 }), 0xFFFF0000, 2);
 
             self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 0, 0, 10 }), 0xFFFF0000, 2);
 

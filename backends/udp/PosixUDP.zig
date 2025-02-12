@@ -18,7 +18,7 @@ const UDPBackend: type = struct {
     writePointer: usize = 0,
 
     pub fn init() Self {
-        return .{
+        var self: Self = .{
             .readBuffer = undefined,
             .udpSocket = undefined,
             .addr = undefined,
@@ -27,6 +27,8 @@ const UDPBackend: type = struct {
             .readAvailable = 0,
             .writePointer = 0,
         };
+        self.openUDPSocket(62895);
+        return self;
     }
 
     pub fn openUDPSocket(self: *Self, port: u16) !void {
@@ -39,7 +41,7 @@ const UDPBackend: type = struct {
 
         try posix.bind(self.udpSocket, &local.any, local.getOsSockLen());
 
-        std.debug.print("udp openn\n", .{});
+        std.debug.print("udp openn maybe?\n", .{});
     }
 
     pub fn readNextUDPPacket(self: *Self) void {
@@ -74,6 +76,8 @@ const UDPBackend: type = struct {
             ) catch {};
             self.writePointer = 0;
         }
+
+        std.debug.print("udp\n", .{});
 
         self.readNextUDPPacket();
     }

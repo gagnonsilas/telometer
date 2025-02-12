@@ -39,6 +39,8 @@
 
           # dontConfigure = true;
           dontInstall = true;
+          dontFixup = true;
+
           buildPhase = ''
             NO_COLOR=1 # prevent escape codes from messing up the `nix log`
             cd dashboard
@@ -90,10 +92,11 @@
             ];
 
             dontInstall = true;
+          dontFixup = true;
 
             buildPhase = ''
               cp ${header} src/src/Packets.h
-              cp ${backend} src/dashboard/backend.zig
+              cp ${backend} src/dashboard/src/backend.zig
               cd src/dashboard
               PACKAGE_DIR=${pkgs.callPackage dashboard/deps.nix { zig = zig; }}
               zig build --global-cache-dir $(pwd)/.cache --cache-dir $(pwd)/.zig-cache --system $PACKAGE_DIR -Dcpu=baseline --prefix $out
