@@ -565,7 +565,7 @@ const PlotArm = struct {
     projectionRatio: f32,
 
     pub fn init() Self {
-        const cameraPos = mat.Vec3f.new(.{ 100, 100, 100 });
+        const cameraPos = mat.Vec3f.new(.{ 300, 300, 400 });
         const cameraDir = mat.Vec3f.new(.{ -1, -1, -1 }).unit();
         // const xy_dir = mat.Vec2f.new(.{ cameraDir.d[0], cameraDir.d[1] });
         // const up_xy = xy_dir.unit().scale(-cameraDir.d[2]);
@@ -644,7 +644,7 @@ const PlotArm = struct {
 
             self.size = .{ .x = self.bounds_x * self.sf, .y = self.bounds_y * self.sf };
 
-            self.cameraTransform = self.cameraTransform.mul(mat.rotation_axis_angle(f32, mat.Vec3f.new(.{ 0, 0, 1 }), 0.005));
+            self.cameraTransform = self.cameraTransform.mul(mat.rotation_axis_angle(f32, mat.Vec3f.new(.{ 0, 0, 1 }), 0.002));
 
             c.ImDrawList_AddRectFilled(
                 self.drawList,
@@ -663,7 +663,7 @@ const PlotArm = struct {
             );
             defer c.ImDrawList_PopClipRect(self.drawList);
 
-            const gridLines: i32 = 10;
+            const gridLines: i32 = 30;
             const spacing: f32 = 10;
 
             for (0..gridLines * 2 + 1) |n| {
@@ -686,7 +686,18 @@ const PlotArm = struct {
 
             self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 0, 0, 10 }), 0xFFFF0000, 2);
 
-            self.drawTransformMatrix(mat.translation_matrix(f32, mat.Vec3f.new(.{ 0, 0, 30 })), 20);
+            // self.drawTransformMatrix(mat.translation_matrix(f32, mat.Vec3f.new(.{ 0, 0, 30 })), 20);
+
+            var transforms: []mat.Mat(4, 4, f32) = undefined;
+            transforms.ptr = @ptrCast(@alignCast(packets.transforms.pointer));
+            transforms.len = 4;
+
+            // for (0..4) |i| {}
+            for (transforms) |transform| {
+                // std.debug.print("transform : {}\n ", .{transform.transpose()});
+                self.drawTransformMatrix(transform.transpose(), 20);
+            }
+            // std.debug.print("size: {}\n", .{@sizeOf(mat.Mat(4, 4, f32))});
 
             // std.debug.print("{}\n", .{self.cameraPos});
         }
