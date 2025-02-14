@@ -563,6 +563,7 @@ const PlotArm = struct {
     bounds_y: f32,
     sf: f32,
     projectionRatio: f32,
+    rotation: f32,
 
     pub fn init() Self {
         const cameraPos = mat.Vec3f.new(.{ 300, 300, 400 });
@@ -591,6 +592,7 @@ const PlotArm = struct {
             .bounds_y = 10,
             .projectionRatio = 5,
             .sf = 0,
+            .rotation = 0,
         };
 
         // std.debug.print("Camera Transform: {}\n", .{self.cameraTransform});
@@ -644,7 +646,22 @@ const PlotArm = struct {
 
             self.size = .{ .x = self.bounds_x * self.sf, .y = self.bounds_y * self.sf };
 
-            self.cameraTransform = self.cameraTransform.mul(mat.rotation_axis_angle(f32, mat.Vec3f.new(.{ 0, 0, 1 }), 0.002));
+            // c.igSetScrollY_WindowPtr(, )
+
+            const scrollFactor = std.math.pow(f32, 2, -0.05 * c.igGetIO().*.MouseWheel);
+            self.cameraTransform = self.cameraTransform.mul(mat.scale_matrix(f32, mat.Vec3f.new(.{ scrollFactor, scrollFactor, scrollFactor })));
+
+            if (c.igGetIO().*.MouseDown[0]) {
+                const xdrag = c.igGetIO().*.MouseDelta.x;
+                self.rotation = xdrag * -0.005;
+            }
+            const horizontal = c.igGetIO().*.MouseWheelH;
+            if (horizontal != 0) {
+                self.rotation = horizontal * -0.01;
+            }
+            self.rotation = self.rotation * 0.98;
+
+            self.cameraTransform = self.cameraTransform.mul(mat.rotation_axis_angle(f32, mat.Vec3f.new(.{ 0, 0, 1 }), self.rotation));
 
             c.ImDrawList_AddRectFilled(
                 self.drawList,
