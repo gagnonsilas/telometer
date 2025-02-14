@@ -647,17 +647,18 @@ const PlotArm = struct {
             self.size = .{ .x = self.bounds_x * self.sf, .y = self.bounds_y * self.sf };
 
             // c.igSetScrollY_WindowPtr(, )
+            if (c.igIsWindowFocused(c.ImGuiFocusedFlags_None)) {
+                const scrollFactor = std.math.pow(f32, 2, -0.05 * c.igGetIO().*.MouseWheel);
+                self.cameraTransform = self.cameraTransform.mul(mat.scale_matrix(f32, mat.Vec3f.new(.{ scrollFactor, scrollFactor, scrollFactor })));
 
-            const scrollFactor = std.math.pow(f32, 2, -0.05 * c.igGetIO().*.MouseWheel);
-            self.cameraTransform = self.cameraTransform.mul(mat.scale_matrix(f32, mat.Vec3f.new(.{ scrollFactor, scrollFactor, scrollFactor })));
-
-            if (c.igGetIO().*.MouseDown[0]) {
-                const xdrag = c.igGetIO().*.MouseDelta.x;
-                self.rotation = xdrag * -0.005;
-            }
-            const horizontal = c.igGetIO().*.MouseWheelH;
-            if (horizontal != 0) {
-                self.rotation = horizontal * -0.01;
+                if (c.igGetIO().*.MouseDown[0]) {
+                    const xdrag = c.igGetIO().*.MouseDelta.x;
+                    self.rotation = xdrag * -0.005;
+                }
+                const horizontal = c.igGetIO().*.MouseWheelH;
+                if (horizontal != 0) {
+                    self.rotation = horizontal * -0.01;
+                }
             }
             self.rotation = self.rotation * 0.98;
 
