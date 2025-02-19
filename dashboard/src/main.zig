@@ -29,7 +29,8 @@ var packets: telemetry.TelemetryPackets = undefined;
 var instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets) = undefined;
 
 var test_plot: Plot = undefined;
-var plot_arm: PlotArm = undefined;
+var plot_arm: Plot3d = undefined;
+var vel_plot: Plot3d = undefined;
 
 const stdout = std.io.getStdOut().writer();
 
@@ -194,7 +195,8 @@ pub fn main() !void {
     // c.igDragDrop
 
     test_plot = Plot.init(allocator);
-    plot_arm = PlotArm.init();
+    plot_arm = Plot3d.init(300, 10, 30);
+    vel_plot = Plot3d.init(20, 1, 10);
 
     const clear_color = c.ImVec4{ .x = 0.45, .y = 0.55, .z = 0.60, .w = 1.00 };
 
@@ -553,7 +555,7 @@ const Plot = struct {
     }
 };
 
-const PlotArm = struct {
+const Plot3d = struct {
     const Self = @This();
     cameraTransform: mat.Mat(4, 4, f32),
     drawList: [*c]c.ImDrawList,
@@ -564,9 +566,15 @@ const PlotArm = struct {
     sf: f32,
     projectionRatio: f32,
     rotation: f32,
+    gridLines: i32,
+    gridSpacing: f32,
 
-    pub fn init() Self {
-        const cameraPos = mat.Vec3f.new(.{ 300, 300, 400 });
+    pub fn init(
+        cameraDist: f32,
+        gridSpacing: f32,
+        gridLines: i32,
+    ) Self {
+        const cameraPos = mat.Vec3f.new(.{ 1 * cameraDist, 1 * cameraDist, 1 * cameraDist });
         const cameraDir = mat.Vec3f.new(.{ -1, -1, -1 }).unit();
         // const xy_dir = mat.Vec2f.new(.{ cameraDir.d[0], cameraDir.d[1] });
         // const up_xy = xy_dir.unit().scale(-cameraDir.d[2]);
@@ -593,6 +601,8 @@ const PlotArm = struct {
             .projectionRatio = 5,
             .sf = 0,
             .rotation = 0,
+            .gridLines = gridLines,
+            .gridSpacing = gridSpacing,
         };
 
         // std.debug.print("Camera Transform: {}\n", .{self.cameraTransform});
@@ -611,10 +621,10 @@ const PlotArm = struct {
         });
     }
 
-    pub fn drawLine(self: Self, start: mat.Vec3f, end: mat.Vec3f, color: c.ImU32, thickness: f32) void {
+    pub fn drawLine(self: Self, start: mat.Vec3f, stop: mat.Vec3f, color: c.ImU32, thickness: f32) void {
         // const transformSpace = mat.Mat(4, 1, f32).new(.{ start.d, 1 });
         const cameraSpaceStart = self.cameraTransform.mul(mat.Mat(4, 1, f32).new(.{ start.d[0], start.d[1], start.d[2], 1 }));
-        const cameraSpaceEnd = self.cameraTransform.mul(mat.Mat(4, 1, f32).new(.{ end.d[0], end.d[1], end.d[2], 1 }));
+        const cameraSpaceEnd = self.cameraTransform.mul(mat.Mat(4, 1, f32).new(.{ stop.d[0], stop.d[1], stop.d[2], 1 }));
 
         const screenSpaceStart = self.toScreenSpace(mat.Vec4f.new(cameraSpaceStart.m));
         const screenSpaceEnd = self.toScreenSpace(mat.Vec4f.new(cameraSpaceEnd.m));
@@ -628,100 +638,119 @@ const PlotArm = struct {
         }
     }
 
-    pub fn update(self: *Self) void {
-        if (c.igBegin("3dDisplay", null, 0)) {
-            self.drawList = c.igGetWindowDrawList();
-            c.igGetCursorScreenPos(&self.start);
-            c.igGetContentRegionAvail(&self.size);
+    pub fn updateBegin(self: *Self) void {
+        self.drawList = c.igGetWindowDrawList();
+        c.igGetCursorScreenPos(&self.start);
+        c.igGetContentRegionAvail(&self.size);
 
-            if ((self.size.x * (self.bounds_y / self.bounds_x)) < self.size.y) {
-                // std.debug.print("toast? {}, {}, \n", .{ self.size.x * (self.bounds_y / self.size.y), self.size.y });
-                self.sf = self.size.x / (self.bounds_x);
-                self.start.y = self.start.y + (self.size.y - self.bounds_y * self.sf) / 2;
-            } else {
-                // std.debug.print("test?\n", .{});
-                self.sf = self.size.y / (self.bounds_y);
-                self.start.x = self.start.x + (self.size.x - self.bounds_x * self.sf) / 2;
-            }
-
-            self.size = .{ .x = self.bounds_x * self.sf, .y = self.bounds_y * self.sf };
-
-            // c.igSetScrollY_WindowPtr(, )
-            if (c.igIsWindowFocused(c.ImGuiFocusedFlags_None)) {
-                const scrollFactor = std.math.pow(f32, 2, -0.05 * c.igGetIO().*.MouseWheel);
-                self.cameraTransform = self.cameraTransform.mul(mat.scale_matrix(f32, mat.Vec3f.new(.{ scrollFactor, scrollFactor, scrollFactor })));
-
-                if (c.igGetIO().*.MouseDown[0]) {
-                    const xdrag = c.igGetIO().*.MouseDelta.x;
-                    self.rotation = xdrag * -0.005;
-                }
-                const horizontal = c.igGetIO().*.MouseWheelH;
-                if (horizontal != 0) {
-                    self.rotation = horizontal * -0.01;
-                }
-            }
-            self.rotation = self.rotation * 0.98;
-
-            self.cameraTransform = self.cameraTransform.mul(mat.rotation_axis_angle(f32, mat.Vec3f.new(.{ 0, 0, 1 }), self.rotation));
-
-            c.ImDrawList_AddRectFilled(
-                self.drawList,
-                self.start,
-                c.ImVec2{ .x = self.start.x + self.size.x, .y = self.start.y + self.size.y - 30 },
-                0xFF101010,
-                10,
-                c.ImDrawFlags_None,
-            );
-
-            c.ImDrawList_PushClipRect(
-                self.drawList,
-                self.start,
-                c.ImVec2{ .x = self.start.x + self.size.x, .y = self.start.y + self.size.y - 30 },
-                false,
-            );
-            defer c.ImDrawList_PopClipRect(self.drawList);
-
-            const gridLines: i32 = 30;
-            const spacing: f32 = 10;
-
-            for (0..gridLines * 2 + 1) |n| {
-                const i: i32 = @as(i32, @intCast(n)) - gridLines;
-                self.drawLine(
-                    mat.Vec3f.new(.{ @as(f32, @floatFromInt(i)) * spacing, @as(f32, @floatFromInt(gridLines)) * spacing, 0 }),
-                    mat.Vec3f.new(.{ @as(f32, @floatFromInt(i)) * spacing, -@as(f32, @floatFromInt(gridLines)) * spacing, 0 }),
-                    0x55FFFFFF,
-                    2,
-                );
-                self.drawLine(
-                    mat.Vec3f.new(.{ @as(f32, @floatFromInt(gridLines)) * spacing, @as(f32, @floatFromInt(i)) * spacing, 0 }),
-                    mat.Vec3f.new(.{ -@as(f32, @floatFromInt(gridLines)) * spacing, @as(f32, @floatFromInt(i)) * spacing, 0 }),
-                    0x55FFFFFF,
-                    2,
-                );
-            }
-
-            self.drawTransformMatrix(mat.Mat(4, 4, f32).identity(), 10);
-
-            self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 0, 0, 10 }), 0xFFFF0000, 2);
-
-            // self.drawTransformMatrix(mat.translation_matrix(f32, mat.Vec3f.new(.{ 0, 0, 30 })), 20);
-
-            var transforms: []mat.Mat(4, 4, f32) = undefined;
-            transforms.ptr = @ptrCast(@alignCast(packets.transforms.pointer));
-            transforms.len = 4;
-
-            // for (0..4) |i| {}
-            for (transforms) |transform| {
-                // std.debug.print("transform : {}\n ", .{transform.transpose()});
-                self.drawTransformMatrix(transform.transpose(), 20);
-            }
-            // std.debug.print("size: {}\n", .{@sizeOf(mat.Mat(4, 4, f32))});
-
-            // std.debug.print("{}\n", .{self.cameraPos});
+        if ((self.size.x * (self.bounds_y / self.bounds_x)) < self.size.y) {
+            // std.debug.print("toast? {}, {}, \n", .{ self.size.x * (self.bounds_y / self.size.y), self.size.y });
+            self.sf = self.size.x / (self.bounds_x);
+            self.start.y = self.start.y + (self.size.y - self.bounds_y * self.sf) / 2;
+        } else {
+            // std.debug.print("test?\n", .{});
+            self.sf = self.size.y / (self.bounds_y);
+            self.start.x = self.start.x + (self.size.x - self.bounds_x * self.sf) / 2;
         }
-        c.igEnd();
+
+        self.size = .{ .x = self.bounds_x * self.sf, .y = self.bounds_y * self.sf };
+
+        // c.igSetScrollY_WindowPtr(, )
+        if (c.igIsWindowFocused(c.ImGuiFocusedFlags_None)) {
+            const scrollFactor = std.math.pow(f32, 2, -0.05 * c.igGetIO().*.MouseWheel);
+            self.cameraTransform = self.cameraTransform.mul(mat.scale_matrix(f32, mat.Vec3f.new(.{ scrollFactor, scrollFactor, scrollFactor })));
+
+            if (c.igGetIO().*.MouseDown[0]) {
+                const xdrag = c.igGetIO().*.MouseDelta.x;
+                self.rotation = xdrag * -0.005;
+            }
+            const horizontal = c.igGetIO().*.MouseWheelH;
+            if (horizontal != 0) {
+                self.rotation = horizontal * -0.01;
+            }
+        }
+        // self.rotation = self.rotation * 0.98;
+
+        self.cameraTransform = self.cameraTransform.mul(mat.rotation_axis_angle(f32, mat.Vec3f.new(.{ 0, 0, 1 }), self.rotation));
+
+        c.ImDrawList_AddRectFilled(
+            self.drawList,
+            self.start,
+            c.ImVec2{ .x = self.start.x + self.size.x, .y = self.start.y + self.size.y - 30 },
+            0xFF101010,
+            10,
+            c.ImDrawFlags_None,
+        );
+
+        c.ImDrawList_PushClipRect(
+            self.drawList,
+            self.start,
+            c.ImVec2{ .x = self.start.x + self.size.x, .y = self.start.y + self.size.y - 30 },
+            false,
+        );
+
+        for (0..@intCast(self.gridLines * 2 + 1)) |n| {
+            const i: i32 = @as(i32, @intCast(n)) - self.gridLines;
+            self.drawLine(
+                mat.Vec3f.new(.{ @as(f32, @floatFromInt(i)) * self.gridSpacing, @as(f32, @floatFromInt(self.gridLines)) * self.gridSpacing, 0 }),
+                mat.Vec3f.new(.{ @as(f32, @floatFromInt(i)) * self.gridSpacing, -@as(f32, @floatFromInt(self.gridLines)) * self.gridSpacing, 0 }),
+                0x55FFFFFF,
+                2,
+            );
+            self.drawLine(
+                mat.Vec3f.new(.{ @as(f32, @floatFromInt(self.gridLines)) * self.gridSpacing, @as(f32, @floatFromInt(i)) * self.gridSpacing, 0 }),
+                mat.Vec3f.new(.{ -@as(f32, @floatFromInt(self.gridLines)) * self.gridSpacing, @as(f32, @floatFromInt(i)) * self.gridSpacing, 0 }),
+                0x55FFFFFF,
+                2,
+            );
+        }
+
+        self.drawTransformMatrix(mat.Mat(4, 4, f32).identity(), self.gridSpacing);
+
+        // self.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), mat.Vec3f.new(.{ 0, 0, 10 }), 0xFFFF0000, 2);
+
+        // self.drawTransformMatrix(mat.translation_matrix(f32, mat.Vec3f.new(.{ 0, 0, 30 })), 20);
+
+        // std.debug.print("size: {}\n", .{@sizeOf(mat.Mat(4, 4, f32))});
+
+        // std.debug.print("{}\n", .{self.cameraPos});
+
+    }
+
+    pub fn end(self: *Self) void {
+        c.ImDrawList_PopClipRect(self.drawList);
     }
 };
+
+fn plotArm() void {
+    if (c.igBegin("Arm", null, 0)) {}
+    plot_arm.updateBegin();
+    var transforms: []mat.Mat(4, 4, f32) = undefined;
+    transforms.ptr = @ptrCast(@alignCast(packets.transforms.pointer));
+    transforms.len = 4;
+
+    // for (0..4) |i| {}
+    for (transforms) |transform| {
+        // std.debug.print("transform : {}\n ", .{transform.transpose()});
+        plot_arm.drawTransformMatrix(transform.transpose(), 20);
+    }
+    plot_arm.end();
+    c.igEnd();
+}
+
+fn vel3d() void {
+    if (c.igBegin("Velocity", null, 0)) {}
+    vel_plot.updateBegin();
+
+    const jacobian: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.jacobianVel.pointer))).*);
+    const vel: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.vel.pointer))).*);
+
+    vel_plot.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), jacobian, 0xFFFF6900, 1);
+    vel_plot.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), vel, 0xFF00B1DF, 1);
+
+    vel_plot.end();
+    c.igEnd();
+}
 
 fn update() void {
     if (c.igBegin("test", null, 0)) {}
@@ -732,7 +761,8 @@ fn update() void {
     reflow();
 
     test_plot.update();
-    plot_arm.update();
+    plotArm();
+    vel3d();
 
     list();
 }
