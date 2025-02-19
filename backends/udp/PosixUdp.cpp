@@ -11,6 +11,7 @@
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <linux/can.h>
 
 namespace Telometer {
 
@@ -34,7 +35,7 @@ void PosixUdpBackend::update() {
 }
 
 int PosixUdpBackend::openUDPSocket(const char *ip) {
-  udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
+  udpSocket = socket(PF_CAN, SOCK_DGRAM, CAN_RAW);
   memset(&servaddr, 0, sizeof(servaddr));
   servaddr.sin_family = AF_INET;
   servaddr.sin_port = htons(PORT);

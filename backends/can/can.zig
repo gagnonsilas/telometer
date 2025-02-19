@@ -28,15 +28,36 @@ pub fn CANBackend() type {
             };
         }
 
-        pub fn openUDPSocket(self: *Self, port: u16) !void {
+        pub fn openCANSocket(self: *Self, port: u16) !void {
             const local = try std.net.Address.parseIp("0.0.0.0", port);
             self.udpSocket = try posix.socket(
                 posix.AF.CAN,
                 posix.SOCK.RAW,
-                posix.IPPROTO,
+                1, // CAN_RAW <linux/can.h>
             );
 
             try posix.bind(self.udpSocket, &local.any, local.getOsSockLen());
+
+            var ifname = [_]u8{0} ** 16;
+            try utils.strcpy(can_if_name, &ifname);
+
+            var ifreq = posix.ifreq{
+                .ifrn = .{ .name = ifname },
+                .ifru = undefined,
+            };
+            posix.ioctl_SIOCGIFINDEX(fd, &ifreq) catch |e| {
+                debugPrint("ioctl reported {} when trying to get the can interface index", .{e});
+                return CanError.InterfaceNotFound;
+            };
+            debugPrint("CAN interface index is {}", .{ifreq.ifru.ivalue});
+            var can_addr: SockaddrCan = .{
+                .can_ifindex = ifreq.ifru.ivalue,
+            };
+            const addr: *posix.sockaddr = @ptrCast(&can_addr);
+            posix.bind(fd, addr, @sizeOf(SockaddrCan)) catch {
+                return CanError.SocketCanFailure;
+            };
+            debugPrint("Bound to socketcan successfully", .{});
 
             std.debug.print("udp openn\n", .{});
         }
