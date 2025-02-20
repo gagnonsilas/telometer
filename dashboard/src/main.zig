@@ -740,7 +740,7 @@ fn plotArm() void {
 
     const transform: mat.Vec3f = .{ .d = transforms[3].transpose().col(3).d[0..3].* };
 
-    std.debug.print("transform? {}, {}\n", .{ transform, transforms[3] });
+    // std.debug.print("transform? {}, {}\n", .{ transform, transforms[3] });
 
     plot_arm.drawLine(transform, transform.add(jacobian), 0xFFFF6900, 2);
     plot_arm.drawLine(transform, transform.add(vel), 0xFF00B1DF, 2);
