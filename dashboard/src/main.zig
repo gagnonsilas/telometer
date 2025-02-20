@@ -734,6 +734,16 @@ fn plotArm() void {
         // std.debug.print("transform : {}\n ", .{transform.transpose()});
         plot_arm.drawTransformMatrix(transform.transpose(), 20);
     }
+
+    const jacobian: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.jacobianVel.pointer))).*);
+    const vel: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.vel.pointer))).*);
+
+    const transform: mat.Vec3f = .{ .d = transforms[3].transpose().col(3).d[0..3].* };
+
+    std.debug.print("transform? {}, {}\n", .{ transform, transforms[3] });
+
+    plot_arm.drawLine(transform, transform.add(jacobian), 0xFFFF6900, 2);
+    plot_arm.drawLine(transform, transform.add(vel), 0xFF00B1DF, 2);
     plot_arm.end();
     c.igEnd();
 }
@@ -744,9 +754,8 @@ fn vel3d() void {
 
     const jacobian: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.jacobianVel.pointer))).*);
     const vel: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.vel.pointer))).*);
-
-    vel_plot.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), jacobian, 0xFFFF6900, 1);
-    vel_plot.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), vel, 0xFF00B1DF, 1);
+    vel_plot.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), jacobian, 0xFFFF6900, 3);
+    vel_plot.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), vel, 0xFF00B1DF, 3);
 
     vel_plot.end();
     c.igEnd();
