@@ -117,7 +117,7 @@
           ];
 
           shellHook = ''
-            exec zsh 
+            # exec zsh 
           '';
         };
       }

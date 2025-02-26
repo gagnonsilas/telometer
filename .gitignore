@@ -12,3 +12,6 @@ telometer
 
 **/.zig-cache
 **/zig-out
+
+.direnv
+.envrc
