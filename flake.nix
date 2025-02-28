@@ -42,18 +42,19 @@
           dontFixup = true;
 
           buildPhase = ''
-            NO_COLOR=1 # prevent escape codes from messing up the `nix log`
+            export NO_COLOR=1 # prevent escape codes from messing up the `nix log`
             cd dashboard
             PACKAGE_DIR=${package_dir}
             export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath buildInputs}
+
             zig build --global-cache-dir $(pwd)/.cache --cache-dir $(pwd)/.zig-cache --system $PACKAGE_DIR -Dcpu=baseline --prefix $out
 
             cd ..
 
             mkdir -p $out/lib
   
-            c++ -fPIC -c cpp/TelometerImpl.cpp -o cpp/telometer.o -Icpp -Isrc
-            c++ -shared -o $out/lib/libtelometer.so cpp/telometer.o
+            g++ -fPIC -c cpp/TelometerImpl.cpp -o cpp/telometer.o -Icpp -Isrc
+            g++ -shared -o $out/lib/libtelometer.so cpp/telometer.o
 
             cp cpp/*.h $out/include
             cp src/Telometer.h $out/include
