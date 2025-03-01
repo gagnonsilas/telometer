@@ -772,7 +772,7 @@ fn update() void {
 
     test_plot.update();
     plotArm();
-    // vel3d();
+    vel3d();
 
     list();
 }
