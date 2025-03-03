@@ -220,13 +220,7 @@ fn vel3d() void {
     c.igEnd();
 }
 
-inline fn fuck() void {
-    defer std.debug.print("defer?\n", .{});
-}
-
 fn update() void {
-    std.debug.print("before fuck!\n", .{});
-    fuck();
     dashboard.list(instance);
     instance.update();
 
@@ -234,6 +228,5 @@ fn update() void {
 
     test_plot.update();
     plotArm();
-    std.debug.print("before fuck?\n", .{});
     vel3d();
 }
