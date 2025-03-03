@@ -10,6 +10,7 @@ const UDPBackend: type = struct {
     const Self = @This();
     udpSocket: posix.socket_t,
     addr: posix.sockaddr,
+    socklen: posix.socklen_t,
 
     readBuffer: [MAX_UDP_PACKET_SIZE]u8,
     readPointer: usize = 0,
@@ -22,6 +23,7 @@ const UDPBackend: type = struct {
             .readBuffer = undefined,
             .udpSocket = undefined,
             .addr = undefined,
+            .socklen = undefined,
             .readPointer = 0,
             .writeBuffer = undefined,
             .readAvailable = 0,
@@ -45,16 +47,18 @@ const UDPBackend: type = struct {
     }
 
     pub fn readNextUDPPacket(self: *Self) void {
+        // std.debug.print("read1? {}\n", .{0});
         const n_recv = posix.recvfrom(
             self.udpSocket,
             self.readBuffer[0..],
             0,
-            null,
-            null,
+            &self.addr,
+            &self.socklen,
         ) catch return;
 
         self.readPointer = 0;
         self.readAvailable = n_recv;
+
         // std.debug.print(
         //     "received {d} byte(s) : {s}\n",
         //     .{ n_recv, self.readBuffer[0..n_recv] },
@@ -72,7 +76,7 @@ const UDPBackend: type = struct {
                 self.writeBuffer[0..self.writePointer],
                 0,
                 &self.addr,
-                @sizeOf(posix.socklen_t),
+                self.socklen,
             ) catch {};
 
             self.writePointer = 0;
