@@ -461,6 +461,14 @@ pub const Plot3d = struct {
         c.ImDrawList_AddLine(self.drawList, .{ .x = screenSpaceStart.d[0], .y = screenSpaceStart.d[1] }, .{ .x = screenSpaceEnd.d[0], .y = screenSpaceEnd.d[1] }, color, thickness);
     }
 
+    pub fn drawPoint(self: Self, point: mat.Vec3f, color: c.ImU32, size: f32) void {
+        // const transformSpace = mat.Mat(4, 1, f32).new(.{ point.d, 1 });
+        const cameraSpacePoint = self.cameraTransform.mul(mat.Mat(4, 1, f32).new(.{ point.d[0], point.d[1], point.d[2], 1 }));
+
+        const screenSpacePoint = self.toScreenSpace(mat.Vec4f.new(cameraSpacePoint.m));
+        c.ImDrawList_AddCircleFilled(self.drawList, .{ .x = screenSpacePoint.d[0], .y = screenSpacePoint.d[1] }, size, color, 0);
+    }
+
     pub fn drawTransformMatrix(self: Self, matrix: mat.Mat(4, 4, f32), scale: f32) void {
         const transform: mat.Vec3f = .{ .d = matrix.col(3).d[0..3].* };
         for (0..3) |i| {

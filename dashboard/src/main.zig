@@ -194,6 +194,16 @@ fn plotArm() void {
         plot_arm.drawTransformMatrix(transform.transpose(), 20);
     }
 
+    var traj: []mat.Vec3f = undefined;
+    traj.ptr = @ptrCast(@alignCast(packets.traj.pointer));
+    traj.len = std.math.lossyCast(usize, @as(*i8, @ptrCast(packets.trajLength.pointer)).*);
+
+    for (traj, 0..) |point, i| {
+        if (i < traj.len - 1) {
+            plot_arm.drawLine(point, traj[i + 1], 0xFFFFFF00, 2);
+        }
+    }
+
     const jacobian: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.jacobianVel.pointer))).*);
     const vel: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.vel.pointer))).*);
 
@@ -204,6 +214,7 @@ fn plotArm() void {
     plot_arm.drawLine(transform, transform.add(jacobian), 0xFFFF6900, 2);
     plot_arm.drawLine(transform, transform.add(vel), 0xFF00B1DF, 2);
     plot_arm.end();
+    plot_arm.drawPoint(@as(*mat.Vec3f, @ptrCast(@alignCast(packets.targetPos.pointer))).*, 0xFF21FFFF, 2);
     c.igEnd();
 }
 
