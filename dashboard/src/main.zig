@@ -195,8 +195,8 @@ fn plotArm() void {
     }
 
     var traj: []mat.Vec3f = undefined;
-    traj.ptr = @ptrCast(@alignCast(packets.traj.pointer));
-    traj.len = std.math.lossyCast(usize, @as(*i8, @ptrCast(packets.trajLength.pointer)).*);
+    traj.ptr = @ptrCast(&@as(*telemetry.trajectory, @ptrCast(@alignCast(packets.traj.pointer))).*.positions);
+    traj.len = @as(*telemetry.trajectory, @ptrCast(@alignCast(packets.traj.pointer))).*.len;
 
     for (traj, 0..) |point, i| {
         if (i < traj.len - 1) {
@@ -219,22 +219,62 @@ fn plotArm() void {
 }
 
 fn vel3d() void {
-    if (c.igBegin("Velocity", null, 0)) {}
-    vel_plot.updateBegin();
+    if (c.igBegin("Velocity", null, 0)) {
+        vel_plot.updateBegin();
 
-    const jacobian: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.jacobianVel.pointer))).*);
-    const vel: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.vel.pointer))).*);
-    vel_plot.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), jacobian, 0xFFFF6900, 3);
-    vel_plot.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), vel, 0xFF00B1DF, 3);
+        const jacobian: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.jacobianVel.pointer))).*);
+        const vel: mat.Vec3f = @as(mat.Vec3f, @as(*mat.Vec3f, @ptrCast(@alignCast(packets.vel.pointer))).*);
+        vel_plot.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), jacobian, 0xFFFF6900, 3);
+        vel_plot.drawLine(mat.Vec3f.new(.{ 0, 0, 0 }), vel, 0xFF00B1DF, 3);
 
-    vel_plot.end();
+        vel_plot.end();
+    }
+    c.igEnd();
+}
+
+fn rbe3001() void {
+    const enabled: *bool = @ptrCast(@alignCast(packets.enabled.pointer));
+    if (c.igIsKeyPressed_Bool(c.ImGuiKey_Space, false)) {
+        enabled.* = false;
+        packets.enabled.queued = 1;
+    }
+
+    if ((c.igIsKeyPressed_Bool(c.ImGuiKey_Backslash, false) or
+        c.igIsKeyPressed_Bool(c.ImGuiKey_RightBracket, false) or
+        c.igIsKeyPressed_Bool(c.ImGuiKey_LeftBracket, false)) and
+        (c.igIsKeyPressed_Bool(c.ImGuiKey_Backslash, true) and
+        c.igIsKeyPressed_Bool(c.ImGuiKey_LeftBracket, true) and
+        c.igIsKeyPressed_Bool(c.ImGuiKey_RightBracket, true)))
+    {
+        enabled.* = !enabled.*;
+        packets.enabled.queued = 1;
+    }
+
+    if (c.igBegin("Control everything", null, 0)) {
+        const state: *u16 = @ptrCast(@alignCast(packets.state.pointer));
+        if (c.igButton("GRAB", .{ .x = -1, .y = 100 })) {
+            state.* = 3;
+            packets.state.queued = 1;
+        }
+        if (c.igButton("DEPOSIT", .{ .x = -1, .y = 100 })) {
+            state.* = 4;
+            packets.state.queued = 1;
+        }
+        // c.igSameLine(0, 10);
+        if (c.igButton("THROW", .{ .x = -1, .y = 100 })) {
+            state.* = 5;
+            packets.state.queued = 1;
+        }
+    }
     c.igEnd();
 }
 
 fn update() void {
     dashboard.list(instance);
+
     instance.update();
 
+    rbe3001();
     reflow();
 
     test_plot.update();

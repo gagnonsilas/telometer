@@ -161,7 +161,22 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
             if (displayFloat("##" ++ name, data, ValueType)) packet.queued = true;
         },
         .Bool => {
-            // if (c.igCheckbox("##" ++ name, @ptrCast(@alignCast(data)))) packet.queued = true;
+            const ptr: *bool = @ptrCast(@alignCast(data));
+            const val: f32 = @floatFromInt(@as(*u8, @ptrCast(@alignCast(data))).*);
+            if (c.igColorButton(
+                "##" ++ name,
+                c.ImVec4{
+                    .x = val,
+                    .y = val,
+                    .z = val,
+                    .w = val,
+                },
+                0,
+                c.ImVec2{ .x = c.igGetFrameHeight() * 2, .y = c.igGetFrameHeight() },
+            )) {
+                ptr.* = !ptr.*;
+                packet.queued = true;
+            }
         },
         else => {
             c.igTextUnformatted(name, name.ptr + name.len);
