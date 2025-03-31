@@ -4,6 +4,7 @@ pkgs.mkShell {
   buildInputs = with pkgs; with python312Packages; [
     # libusb
     SDL2
+    dbus.dev
     pkg-config
     zig
     zls

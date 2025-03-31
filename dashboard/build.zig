@@ -114,6 +114,8 @@ pub fn build(b: *std.Build) void {
 
     exe.root_module.addImport("telometer", telometer_dep.module("Telometer"));
     exe.root_module.addImport("serial", serial_dep.module("serial"));
+    exe.linkSystemLibrary("dbus-1");
+    exe.linkLibC();
     // exe.linkLibrary(telometer_dep.artifact("Telometer"));
     b.installArtifact(exe);
 
