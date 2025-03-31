@@ -117,9 +117,6 @@ pub fn build(b: *std.Build) void {
     exe.linkSystemLibrary("dbus-1");
     exe.linkLibC();
     // exe.linkLibrary(telometer_dep.artifact("Telometer"));
-    // exe.addCSourceFile(.{
-    //     .file = &.{"dbus-1/dbus/dbus.h"},
-    // });
     b.installArtifact(exe);
 
     // glad
