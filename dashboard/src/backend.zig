@@ -3,6 +3,15 @@ const dbus = @cImport({
     @cInclude("dbus/dbus.h");
 });
 
+// Docs:
+// https://web.git.kernel.org/pub/scm/bluetooth/bluez.git/tree/doc
+// https://dbus.freedesktop.org/doc/api/html/group__DBus.html
+
+// Helpful Guides:
+// http://www.matthew.ath.cx/misc/dbus
+// https://www.mongodb.com/developer/languages/cpp/me-and-the-devil-bluez-1/
+// https://web.archive.org/web/20200929010538/https://leonardoce.wordpress.com/2015/03/11/dbus-tutorial-using-the-low-level-api/
+
 const MAX_BLE_PACKET_SIZE = 509;
 const bluez: [*c]const u8 = "org.bluez";
 const path: [*c]const u8 = "/org/bluez/hci0";
@@ -136,7 +145,7 @@ const BLEBackend: type = struct {
 
     fn connect(device_path: [*c]const u8) bool {
         msgQuery = dbus.dbus_message_new_method_call(bluez, device_path, device, "Connect");
-        msgReply = dbus.dbus_connection_send_with_reply_and_block(connection, msgQuery, -1, dbus_error);
+        msgReply = dbus.dbus_connection_send_with_reply_and_block(connection, msgQuery, 100000, dbus_error);
         dbus.dbus_message_unref(msgQuery);
         if (dbus.dbus_error_is_set(dbus_error) != 0) {
             std.debug.print("Connection error\n", .{});
@@ -171,7 +180,10 @@ const BLEBackend: type = struct {
             ); // TODO: remove hardcoded path
             _ = dbus.dbus_connection_send_with_reply_and_block(connection, msgQuery, 1000, dbus_error);
             dbus.dbus_message_unref(msgQuery);
-            if (dbus.dbus_error_is_set(dbus_error) == 0) return;
+            if (dbus.dbus_error_is_set(dbus_error) == 0) {
+                dbus.dbus_error_free(dbus_error);
+                return;
+            }
             dbus.dbus_error_free(dbus_error);
             std.time.sleep(std.time.ns_per_ms * 100);
         }
@@ -359,7 +371,7 @@ const BLEBackend: type = struct {
     }
 
     pub fn getNextHeader(self: *Self) ?tm.Header {
-        if (self.readAvailable - self.readPointer < @sizeOf(tm.Header))
+        if (self.readAvailable - self.readPointer < @sizeOf(tm.Header)) // If this is int overflowing, packets don't match
             return null;
         var header: tm.Header = undefined;
         self.read(@as([*]u8, @ptrCast(&header)), @sizeOf(@TypeOf(header))) catch unreachable;
