@@ -1,4 +1,5 @@
 const std = @import("std");
+const atomic = @import("atomic");
 const dbus = @cImport({
     @cInclude("dbus/dbus.h");
 });
@@ -43,6 +44,7 @@ const BLEBackend: type = struct {
     var rx_buf_len: u16 = 0;
     var rx_mutex: std.Thread.Mutex = undefined;
 
+    var running: bool = true;
     var thread: std.Thread = undefined;
     var connected: bool = false;
     var dev_path: [*c]const u8 = "/org/bluez/hci0/dev_F4_12_FA_F0_91_2A";
@@ -71,6 +73,7 @@ const BLEBackend: type = struct {
         var sub: dbus.DBusMessageIter = undefined;
         var result: u8 = 0;
         _ = dbus.dbus_message_iter_init(msgReply, &iter);
+        dbus.dbus_message_unref(msgReply);
         dbus.dbus_message_iter_recurse(&iter, &sub);
         dbus.dbus_message_iter_get_basic(&sub, &result);
         return result;
@@ -111,12 +114,13 @@ const BLEBackend: type = struct {
                 } else {
                     dbus.dbus_message_iter_get_basic(&args, &sigvalue);
                     std.debug.print("Found Device {s}\n", .{sigvalue.?});
-                    if (std.mem.eql(u8, std.mem.span(sigvalue.?), std.mem.span(name.?))) {
-                        std.debug.print("!!!  !!!  Found Danger Doughnut  !!! !!! {s}\n", .{sigvalue.?});
+                    if (std.mem.eql(u8, std.mem.span(sigvalue.?), std.mem.span(name.?))) { // std.mem.concat();
+                        std.debug.print("!!! Found target device {s}\n", .{sigvalue.?});
                         return sigvalue.?;
                     }
                 }
             }
+            dbus.dbus_message_unref(msgReply);
         }
         return "";
     }
@@ -145,10 +149,10 @@ const BLEBackend: type = struct {
 
     fn connect(device_path: [*c]const u8) bool {
         msgQuery = dbus.dbus_message_new_method_call(bluez, device_path, device, "Connect");
-        msgReply = dbus.dbus_connection_send_with_reply_and_block(connection, msgQuery, 100000, dbus_error);
+        _ = dbus.dbus_connection_send_with_reply_and_block(connection, msgQuery, 100000, dbus_error);
         dbus.dbus_message_unref(msgQuery);
         if (dbus.dbus_error_is_set(dbus_error) != 0) {
-            std.debug.print("Connection error\n", .{});
+            std.debug.print("Connection Error\n", .{});
             dbus.dbus_error_free(dbus_error);
             return false;
         }
@@ -198,7 +202,7 @@ const BLEBackend: type = struct {
         dbus.dbus_connection_flush(connection);
         check(dbus_error);
         var noDataCounter: u32 = 0;
-        while (true) {
+        while (running) {
             _ = dbus.dbus_connection_read_write(connection, 0);
             msgReply = dbus.dbus_connection_pop_message(connection);
             if (msgReply == null) {
@@ -240,6 +244,7 @@ const BLEBackend: type = struct {
                 rx_buf[i] = result.?[i];
             }
             std.Thread.Mutex.unlock(&rx_mutex);
+            dbus.dbus_message_unref(msgReply);
         }
     }
 
@@ -323,16 +328,18 @@ const BLEBackend: type = struct {
             std.debug.print("bluetooth is on\n", .{});
         } else {
             std.debug.print("bluetooth is off\n", .{});
+            return self;
         }
         while (!isConnected()) {
+            std.debug.print("Not Connected. Trying to connect...\n", .{});
             if (!connect(dev_path)) {
-                std.debug.print("Unknown device. Scanning...\n", .{});
+                std.debug.print("Target device is not known to Bluez. Scanning...\n", .{});
                 scanOn();
                 dev_path = findDeviceByMac(dev_path);
                 scanOff();
             }
         }
-        std.debug.print("Device connected\n", .{});
+        std.debug.print("Device connected!\n", .{});
         subscribe();
         thread = std.Thread.spawn(.{}, notifyWorker, .{}) catch undefined;
         return self;
@@ -346,6 +353,7 @@ const BLEBackend: type = struct {
             }
             msgWrite = makeTxMessage();
             _ = dbus.dbus_connection_send(connection, msgWrite, dbus.dbus_message_get_serial(msgWrite));
+            dbus.dbus_message_unref(msgWrite);
             self.writePointer = 0;
         }
 
@@ -380,10 +388,7 @@ const BLEBackend: type = struct {
 
     pub fn end(self: Self) void {
         _ = self;
+        running = false;
         disconnect(dev_path);
-        dbus.dbus_message_unref(msgQuery);
-        dbus.dbus_message_unref(msgReply);
-        dbus.dbus_message_unref(msgRead);
-        dbus.dbus_message_unref(msgWrite);
     }
 };

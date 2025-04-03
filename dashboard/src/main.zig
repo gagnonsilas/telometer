@@ -29,6 +29,7 @@ var packets: telemetry.TelemetryPackets = undefined;
 var instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets) = undefined;
 
 var plot: dashboard.Plot = undefined;
+var plot2d: dashboard.Plot2d = undefined;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -110,6 +111,11 @@ pub fn main() !void {
 
     plot = dashboard.Plot.init(allocator);
 
+    const context2 = c.ImPlot_CreateContext() orelse @panic("Kill yourself");
+    defer c.ImPlot_DestroyContext(context2);
+
+    plot2d = dashboard.Plot2d.init(allocator);
+
     const clear_color = c.ImVec4{ .x = 0.45, .y = 0.55, .z = 0.60, .w = 1.00 };
 
     var running: bool = true;
@@ -152,10 +158,12 @@ pub fn main() !void {
 
         c.SDL_GL_SwapWindow(window);
     }
+    backend.end();
 }
 
 fn update() void {
     instance.update();
     dashboard.list(instance);
     plot.update();
+    plot2d.update();
 }

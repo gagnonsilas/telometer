@@ -40,7 +40,7 @@ pub fn theme_fluent() void {
 
     // NOTE: you have to use the c allocator bc ImGui will try to free it...
     const dejavu = std.heap.c_allocator.dupe(u8, @embedFile("fonts/DejavuSansMono-5m7L.ttf")) catch unreachable;
-    // const dejavu = try std.heap.c_allocator.dupe(u8, @embedFile("fonts/Slugs Racer.ttf"));
+    // const dejavu = std.heap.c_allocator.dupe(u8, @embedFile("fonts/Slugs Racer.ttf")) catch unreachable;
 
     _ = c.ImFontAtlas_AddFontFromMemoryTTF(c.igGetIO().*.Fonts, @ptrCast(dejavu), @intCast(dejavu.len), 16, c.ImFontConfig_ImFontConfig(), null);
 
@@ -199,11 +199,24 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
                 c.igEndDragDropSource();
             }
         },
+        .Struct => |struct_type| {
+            if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
+                drag_drop_2d_payload = Plot2dData{
+                    .pointerX = @unionInit(PlotValue, @typeName(struct_type.fields[0].type), @ptrCast(@alignCast(&@field(data.*, struct_type.fields[0].name)))),
+                    .pointerY = @unionInit(PlotValue, @typeName(struct_type.fields[1].type), @ptrCast(@alignCast(&@field(data.*, struct_type.fields[1].name)))),
+                    .updated = &packet.received,
+                    .name = long_name,
+                };
+                _ = c.igSetDragDropPayload("f32", &drag_drop_2d_payload, @sizeOf(Plot2dData), c.ImGuiCond_Once);
+                c.igEndDragDropSource();
+            }
+        },
         else => {},
     }
 }
 
 var drag_drop_payload: PlotData = undefined;
+var drag_drop_2d_payload: Plot2dData = undefined;
 var my_bool: bool = false;
 
 pub fn list(instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets)) void {
@@ -394,6 +407,110 @@ pub const Plot = struct {
                 }
 
                 c.igPopStyleColor(1);
+            }
+        }
+        c.igEnd();
+    }
+};
+
+pub const Plot2dData = struct {
+    const Self = @This();
+    const DataStruct = struct { valueX: f64, valueY: f64 };
+    const max_len = 128;
+    pointerX: PlotValue,
+    pointerY: PlotValue,
+    updated: *bool,
+    name: [*c]const u8,
+    offset: i32 = 0,
+    data: std.ArrayList(DataStruct) = undefined,
+
+    pub fn initData(self: *Self, allocator: std.mem.Allocator) void {
+        self.data = std.ArrayList(DataStruct).initCapacity(allocator, max_len) catch unreachable;
+        self.data.append(DataStruct{ .valueX = self.pointerX.get_float(), .valueY = self.pointerY.get_float() }) catch unreachable;
+        self.data.append(DataStruct{ .valueX = self.pointerX.get_float(), .valueY = self.pointerY.get_float() }) catch unreachable;
+    }
+
+    pub fn update(self: *Self) void {
+        const length = self.data.items.len;
+
+        if (self.updated.*) {
+            self.get_value(-1).valueX = self.pointerX.get_float();
+            self.get_value(-1).valueY = self.pointerY.get_float();
+
+            // stdout.print("{}, {}\n", .{ timestamp, self.pointer.get_float() }) catch unreachable;
+
+            if (length < max_len) {
+                self.data.append(DataStruct{ .valueX = self.pointerX.get_float(), .valueY = self.pointerY.get_float() }) catch unreachable;
+            } else {
+                self.offset += 1;
+                self.get_value(-1).* = DataStruct{ .valueX = self.pointerX.get_float(), .valueY = self.pointerY.get_float() };
+            }
+        }
+    }
+
+    pub fn get_value(self: *Self, index: i32) *DataStruct {
+        const length = self.data.items.len;
+        return &self.data.items[@intCast(@mod((self.offset + index), @as(i32, @intCast(length))))];
+    }
+};
+
+pub const Plot2d = struct {
+    const Self = @This();
+    data_pointers: std.ArrayList(Plot2dData),
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator) Self {
+        return .{
+            .data_pointers = std.ArrayList(Plot2dData).init(allocator),
+            .allocator = allocator,
+        };
+    }
+
+    pub fn update(self: *Self) void {
+        if (c.igBegin("Plot2d", null, 0)) {
+            if (c.ImPlot_BeginPlot("test2d", c.ImVec2{ .x = -1, .y = -50 }, 0)) {
+                c.ImPlot_SetupAxes("x", "y", 0, 0);
+
+                c.ImPlot_SetupAxisLimits(c.ImAxis_X1, -10, 10, c.ImPlotCond_Once);
+                c.ImPlot_SetupAxisLimits(c.ImAxis_Y1, -10, 10, c.ImPlotCond_Once);
+                // c.ImPlot_SetupAxisLimits(1, -10, 10, c.ImPlotCond_Once);
+                // c.ImPlot_SetupAxisScale_PlotScale(c.ImAxis_X1, c.ImPlotScale_Time);
+
+                if (c.ImPlot_BeginDragDropTargetPlot()) {
+                    if (c.igAcceptDragDropPayload("f32", c.ImGuiDragDropFlags_None)) |payload| {
+                        self.data_pointers.append(@as(*Plot2dData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
+                        self.data_pointers.items[self.data_pointers.items.len - 1].initData(self.allocator);
+                    }
+                    c.igEndDragDropTarget();
+                }
+
+                // if (self.data_pointers.items.len > 0) {
+                //     std.debug.print("{},", .{current_time});
+                // }
+
+                for (self.data_pointers.items) |*data| {
+                    // if (c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1].Range.Max >= current_time) {
+                    data.update();
+                    // }
+
+                    c.ImPlot_PlotLine_doublePtrdoublePtr(
+                        data.name,
+                        &data.data.items[0].valueX,
+                        &data.data.items[0].valueY,
+                        @intCast(data.data.items.len),
+                        c.ImPlotLineFlags_None,
+                        data.offset,
+                        @intCast(@sizeOf(f64) * 2),
+                    );
+                }
+
+                // if (self.data_pointers.items.len > 0) {
+                //     std.debug.print("\n", .{});
+                // }
+
+                c.ImPlot_EndPlot();
+
+                // c.igPopStyleColor(1);
             }
         }
         c.igEnd();
