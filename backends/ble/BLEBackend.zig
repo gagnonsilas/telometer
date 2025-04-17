@@ -42,7 +42,6 @@ const BLEBackend: type = struct {
     var connection: ?*dbus.DBusConnection = null;
     var msgQuery: ?*dbus.DBusMessage = null;
     var msgReply: ?*dbus.DBusMessage = null;
-    var msgRead: ?*dbus.DBusMessage = null;
     var msgWrite: ?*dbus.DBusMessage = null;
 
     fn check(check_error: ?*dbus.DBusError) void {
@@ -369,9 +368,5 @@ const BLEBackend: type = struct {
     pub fn end(self: Self) void {
         _ = self;
         disconnect(dev_path);
-        dbus.dbus_message_unref(msgQuery);
-        dbus.dbus_message_unref(msgReply);
-        dbus.dbus_message_unref(msgRead);
-        dbus.dbus_message_unref(msgWrite);
     }
 };

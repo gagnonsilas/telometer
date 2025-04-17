@@ -13,9 +13,7 @@
   P(N, accel1Avg, vec3f_t)                                                     \
   P(N, accel2Avg, vec3f_t)                                                     \
   P(N, centerOfRotation, vec2f_t)                                              \
-  P(N, xMag, int32_t)                                                          \
-  P(N, yMag, int32_t)                                                          \
-  P(N, zMag, int32_t)                                                          
+  P(N, mag, vec3l_t)                                                           
 
 #define PACKET_TYPES(P, N)                                                     \
   P(N, uint32_t)                                                               \
@@ -29,6 +27,7 @@
   P(N, vec3_t)                                                                 \
   P(N, vec2f_t)                                                                \
   P(N, vec3f_t)                                                                \
+  P(N, vec3l_t)                                                                \
   P(N, newStruct)                                                              \
   P(N, double)                                                                 \
   P(N, float)
@@ -46,6 +45,10 @@ typedef struct cal_en {
 typedef struct vec3_t {
   int16_t x, y, z;
 } vec3_t;
+
+typedef struct vec3l_t {
+  int32_t x, y, z;
+} vec3l_t;
 
 typedef struct vec2f_t {
   float x, y;

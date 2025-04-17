@@ -475,7 +475,6 @@ pub const Plot2d = struct {
                 c.ImPlot_SetupAxisLimits(c.ImAxis_Y1, -10, 10, c.ImPlotCond_Once);
                 // c.ImPlot_SetupAxisLimits(1, -10, 10, c.ImPlotCond_Once);
                 // c.ImPlot_SetupAxisScale_PlotScale(c.ImAxis_X1, c.ImPlotScale_Time);
-
                 if (c.ImPlot_BeginDragDropTargetPlot()) {
                     if (c.igAcceptDragDropPayload("f32", c.ImGuiDragDropFlags_None)) |payload| {
                         self.data_pointers.append(@as(*Plot2dData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
@@ -483,6 +482,7 @@ pub const Plot2d = struct {
                     }
                     c.igEndDragDropTarget();
                 }
+                // c.ImPlot_SetNextMarkerStyle(c.ImPlotMarker_Circle, 6, c.ImVec4{ .x = 1, .y = 1, .z = 1, .w = 1 }, 1, c.ImVec4{ .x = 1, .y = 1, .z = 1, .w = 1 });
 
                 // if (self.data_pointers.items.len > 0) {
                 //     std.debug.print("{},", .{current_time});
