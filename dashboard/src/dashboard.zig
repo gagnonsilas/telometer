@@ -27,7 +27,7 @@ pub fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
 pub fn theme_fluent() void {
     // var io = c.igGetIO();
 
-    // io.Fonts->Clear();
+    // io.Fonts->Clear(); :)
     // io.Fonts->AddFontFromFileTTF("fonts/OpenSans-Light.ttf", 18);
     // io.Fonts->AddFontFromFileTTF("fonts/OpenSans-Regular.ttf", 18);
     // io.Fonts->AddFontFromFileTTF("fonts/OpenSans-Light.ttf", 32);
@@ -149,6 +149,17 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
 
                 inline for (struct_type.fields) |field| {
                     displayValue(field.type, field.name, long_name ++ ".", &@field(data.*, field.name), packet);
+                }
+                c.igPopItemWidth();
+                c.igTreePop();
+            }
+        },
+        .Array => |array_type| {
+            // std.debug.print("array type: {}", .{array_type});
+            if (c.igTreeNode_Str(name)) {
+                c.igPushItemWidth(c.igCalcItemWidth() * 0.8);
+                inline for (0..array_type.len) |i| {
+                    displayValue(array_type.child, std.fmt.comptimePrint("{}", .{i}), long_name ++ ".", &data[i], packet);
                 }
                 c.igPopItemWidth();
                 c.igTreePop();
