@@ -4,67 +4,85 @@ const posix = std.posix;
 const MAX_UDP_PACKET_SIZE = 1024;
 const tm = @import("telometer");
 
+// https://github.com/Hedwyn/canzig/blob/master/src/socketcan.zig
+
+const CanError = error{
+    SendFailed,
+    InterfaceNotFound,
+    SocketCanFailure,
+};
+
+const SockaddrCan = extern struct {
+    can_family: posix.sa_family_t = posix.AF.CAN,
+    can_ifindex: i32,
+};
+
+pub const CanFrame = extern struct {
+    can_id: u32,
+    len: u8,
+    pad: u8,
+    res0: u8 = 0,
+    len8_dlc: u8 = 8,
+    data: [8]u8 = undefined,
+};
+
 pub fn CANBackend() type {
     return struct {
         const Self = @This();
-        udpSocket: posix.socket_t,
-        addr: posix.sockaddr,
-
-        readBuffer: [MAX_UDP_PACKET_SIZE]u8,
-        readPointer: usize = 0,
-        writeBuffer: [MAX_UDP_PACKET_SIZE]u8,
-        readAvailable: usize = 0,
-        writePointer: usize = 0,
+        canSocket: posix.socket_t,
+        addr: *posix.sockaddr,
 
         pub fn init() Self {
-            return .{
-                .readBuffer = undefined,
-                .udpSocket = undefined,
+            var backend: Self = .{
+                .canSocket = undefined,
                 .addr = undefined,
-                .readPointer = 0,
-                .writeBuffer = undefined,
-                .readAvailable = 0,
-                .writePointer = 0,
             };
+            backend.openCANSocket();
         }
 
-        pub fn openCANSocket(self: *Self, port: u16) !void {
-            const local = try std.net.Address.parseIp("0.0.0.0", port);
-            self.udpSocket = try posix.socket(
+        pub fn openCANSocket(self: *Self) !void {
+            self.canSocket = try posix.socket(
                 posix.AF.CAN,
                 posix.SOCK.RAW,
                 1, // CAN_RAW <linux/can.h>
             );
 
-            try posix.bind(self.udpSocket, &local.any, local.getOsSockLen());
-
-            var ifname = [_]u8{0} ** 16;
-            try utils.strcpy(can_if_name, &ifname);
+            const ifname = "can0";
 
             var ifreq = posix.ifreq{
                 .ifrn = .{ .name = ifname },
                 .ifru = undefined,
             };
-            posix.ioctl_SIOCGIFINDEX(fd, &ifreq) catch |e| {
-                debugPrint("ioctl reported {} when trying to get the can interface index", .{e});
+
+            posix.ioctl_SIOCGIFINDEX(self.canSocket, &ifreq) catch |e| {
+                std.debug.print("ioctl reported {} when trying to get the can interface index", .{e});
                 return CanError.InterfaceNotFound;
             };
-            debugPrint("CAN interface index is {}", .{ifreq.ifru.ivalue});
-            var can_addr: SockaddrCan = .{
+
+            std.debug.print("CAN interface index is {}", .{ifreq.ifru.ivalue});
+
+            var can_addr: posix.sockaddr = .{
                 .can_ifindex = ifreq.ifru.ivalue,
             };
-            const addr: *posix.sockaddr = @ptrCast(&can_addr);
-            posix.bind(fd, addr, @sizeOf(SockaddrCan)) catch {
+
+            self.addr = @ptrCast(&can_addr);
+            posix.bind(self.canSocket, self.addr, @sizeOf(SockaddrCan)) catch {
                 return CanError.SocketCanFailure;
             };
-            debugPrint("Bound to socketcan successfully", .{});
+            std.debup.print("Bound to socketcan successfully", .{});
+        }
 
-            std.debug.print("udp openn\n", .{});
+        pub fn canRecv(fd: posix.socket_t) CanFrame {
+            var _frame: CanFrame = undefined;
+            const ret = std.posix.system.recvfrom(fd, @ptrCast(&_frame), @sizeOf(CanFrame), 0, null, null);
+
+            std.debug.print("Recv returned {}\n", .{ret});
+            return _frame;
         }
 
         pub fn readNextUDPPacket(self: *Self) void {
             const n_recv = posix.recvfrom(
-                self.udpSocket,
+                self.canSocket,
                 self.readBuffer[0..],
                 0,
                 null,
@@ -86,7 +104,7 @@ pub fn CANBackend() type {
         pub fn update(self: *Self) void {
             if (self.writePointer > 0) {
                 _ = posix.sendto(
-                    self.udpSocket,
+                    self.canSocket,
                     self.writeBuffer[0..self.writePointer],
                     0,
                     &self.addr,

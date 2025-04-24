@@ -148,7 +148,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
                 c.igPushItemWidth(c.igCalcItemWidth() * 0.8);
 
                 inline for (struct_type.fields) |field| {
-                    displayValue(field.type, field.name, long_name ++ ".", &@field(data.*, field.name), packet);
+                    displayValue(field.type, field.name, long_name ++ ".", @alignCast(&@field(data.*, field.name)), packet);
                 }
                 c.igPopItemWidth();
                 c.igTreePop();
