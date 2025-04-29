@@ -4,7 +4,7 @@
 
 #include <stdbool.h>
 #define PACKETS(P, N)                                                          \
-  P(N, CarHeartBeat, MsgCarHeartbeat)                                               \
+  P(N, CarHeartBeat, MsgCarHeartbeat)                                          \
   P(N, Throttle, ThrottlePacket)                                               \
   P(N, Pedal, PedalInfo)                                                       \
   P(N, PedalFault, PedalFaultInfo)                                             \
@@ -13,6 +13,7 @@
   P(N, PedalCounts, CountsInfo)                                                \
   P(N, BrakeCounts, BrakeCountsInfo)                                           \
   P(N, inverterHC1, MsgInverterHC1Demands)                                     \
+  P(N, inverterHD1, MsgInverterHD1DebugCurrents)                               \
   P(N, IMU_PITCH, TelemPacket)
 
 // P(N, IMU_ROLL, TelemPacket)                                                  \
@@ -46,7 +47,8 @@
   P(N, BrakeCountsInfo)                                                        \
   P(N, MsgInverterHS1TorqueFeedback)                                           \
   P(N, MsgInverterHC1Demands)                                                  \
-  P(N, MsgCarHeartbeat)\
+  P(N, MsgCarHeartbeat)                                                        \
+  P(N, MsgInverterHD1DebugCurrents)                                            \
   P(N, PedalInfo)                                                              \
   P(N, PedalFaultInfo)                                                         \
   P(N, ThrottlePacket)                                                         \
@@ -134,22 +136,24 @@ typedef struct __attribute__((__packed__)) MsgInverterHC1Demands {
   uint8_t checksum;
   uint8_t seqCounter;
 } MsgInverterHC1Demands;
-
+typedef struct __attribute__((__packed__)) MsgInverterHD1DebugCurrents {
+  int16_t Iq_ref;
+  int16_t Id_ref;
+  int16_t Iq_act;
+  int16_t Id_act;
+} MsgInverterHD1DebugCurrents;
 
 enum CarStatus : uint8_t { OK = 0, NOT_OK, DRIVER_DECEASED, ON_FIRE };
 
 typedef struct __attribute__((__packed__)) MsgCarHeartbeat {
-    uint32_t tick;
-    CarStatus status;
-    uint8_t rtd_status : 1;
-    uint8_t reset      : 1;
-    uint8_t errno_;
-    uint8_t caught;
-}MsgCarHeartbeat ;
+  uint32_t tick;
+  CarStatus status;
+  uint8_t rtd_status : 1;
+  uint8_t reset : 1;
+  uint8_t errno_;
+  uint8_t caught;
+} MsgCarHeartbeat;
 
-  
-
-  
 TELOMETER_INSTANCE(Telemetry, PACKET_TYPES, PACKETS)
 
 extern struct TelemetryPackets packets;

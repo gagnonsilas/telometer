@@ -153,6 +153,8 @@ const CANBackend: type = struct {
             0 => tm.Header{ .id = 0 },
 
             (0x1918FF71 | 1 << 31) => tm.Header{ .id = 5 },
+            (0x1918FF71 | 1 << 31) => tm.Header{ .id = 4 },
+            (0x1928FF71 | 1 << 31) => tm.Header{ .id = 9 },
             // 1799 => tm.Header{ .id = 2 },
             else => CanError.UnknownCanID,
         };
