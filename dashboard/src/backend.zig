@@ -74,7 +74,7 @@ const CANBackend: type = struct {
         );
 
         var ifname = [_]u8{0} ** 16;
-        try strcpy("can0", &ifname); // :)
+        try strcpy("vcan0", &ifname); // :)
 
         var ifreq = posix.ifreq{
             .ifrn = .{ .name = ifname },
@@ -144,13 +144,15 @@ const CANBackend: type = struct {
 
     pub fn translateHeader(_: Self, id: u32) !tm.Header {
         return switch (id) {
-            0x300 => tm.Header{ .id = 0 },
-            0x301 => tm.Header{ .id = 3 },
-            0x707 => tm.Header{ .id = 1 },
-            0x709 => tm.Header{ .id = 6 },
-            0x708 => tm.Header{ .id = 5 },
+            0x300 => tm.Header{ .id = 1 },
+            0x301 => tm.Header{ .id = 4 },
+            0x707 => tm.Header{ .id = 2 },
+            0x709 => tm.Header{ .id = 7 },
+            0x19107171 | 1 << 31 => tm.Header{ .id = 8 },
+            0x708 => tm.Header{ .id = 6 },
+            0 => tm.Header{ .id = 0 },
 
-            (0x1918FF71 | 1 << 31) => tm.Header{ .id = 4 },
+            (0x1918FF71 | 1 << 31) => tm.Header{ .id = 5 },
             // 1799 => tm.Header{ .id = 2 },
             else => CanError.UnknownCanID,
         };

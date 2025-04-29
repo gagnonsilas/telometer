@@ -4,13 +4,15 @@
 
 #include <stdbool.h>
 #define PACKETS(P, N)                                                          \
+  P(N, CarHeartBeat, MsgCarHeartbeat)                                               \
   P(N, Throttle, ThrottlePacket)                                               \
   P(N, Pedal, PedalInfo)                                                       \
   P(N, PedalFault, PedalFaultInfo)                                             \
   P(N, Brake, BrakePacket)                                                     \
   P(N, inverterHS1, MsgInverterHS1TorqueFeedback)                              \
   P(N, PedalCounts, CountsInfo)                                                \
-  P(N, BrakeCounts, BrakeCountsInfo )                                                \
+  P(N, BrakeCounts, BrakeCountsInfo)                                           \
+  P(N, inverterHC1, MsgInverterHC1Demands)                                     \
   P(N, IMU_PITCH, TelemPacket)
 
 // P(N, IMU_ROLL, TelemPacket)                                                  \
@@ -40,9 +42,11 @@
 #define PACKET_TYPES(P, N)                                                     \
   P(N, TelemPacket)                                                            \
   P(N, BrakePacket)                                                            \
-  P(N, CountsInfo)                                                            \
-  P(N, BrakeCountsInfo)                                                            \
+  P(N, CountsInfo)                                                             \
+  P(N, BrakeCountsInfo)                                                        \
   P(N, MsgInverterHS1TorqueFeedback)                                           \
+  P(N, MsgInverterHC1Demands)                                                  \
+  P(N, MsgCarHeartbeat)\
   P(N, PedalInfo)                                                              \
   P(N, PedalFaultInfo)                                                         \
   P(N, ThrottlePacket)                                                         \
@@ -117,13 +121,35 @@ typedef struct newStruct {
 } newStruct;
 
 typedef struct __attribute__((__packed__)) BrakeCountsInfo {
-    uint16_t counts_one;
-    uint16_t counts_two;
-    uint16_t zero_one;
-    uint16_t zero_two;
+  uint16_t counts_one;
+  uint16_t counts_two;
+  uint16_t zero_one;
+  uint16_t zero_two;
 } BrakeCountsInfo;
 
+typedef struct __attribute__((__packed__)) MsgInverterHC1Demands {
+  int16_t torqueRequest;
+  uint16_t controlWord;
+  int16_t torqueLimit;
+  uint8_t checksum;
+  uint8_t seqCounter;
+} MsgInverterHC1Demands;
 
+
+enum CarStatus : uint8_t { OK = 0, NOT_OK, DRIVER_DECEASED, ON_FIRE };
+
+typedef struct __attribute__((__packed__)) MsgCarHeartbeat {
+    uint32_t tick;
+    CarStatus status;
+    uint8_t rtd_status : 1;
+    uint8_t reset      : 1;
+    uint8_t errno_;
+    uint8_t caught;
+}MsgCarHeartbeat ;
+
+  
+
+  
 TELOMETER_INSTANCE(Telemetry, PACKET_TYPES, PACKETS)
 
 extern struct TelemetryPackets packets;
