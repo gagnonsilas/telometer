@@ -10,8 +10,9 @@
   P(N, Brake, BrakePacket)                                                     \
   P(N, inverterHS1, MsgInverterHS1TorqueFeedback)                              \
   P(N, PedalCounts, CountsInfo)                                                \
-  P(N, BrakeCounts, BrakeCountsInfo )                                                \
-  P(N, IMU_PITCH, TelemPacket)
+  P(N, BrakeCounts, BrakeCountsInfo )                                          \
+  P(N, IMU_PITCH, TelemPacket) 						       \
+  P(N, inverterHD1, MsgInverterHD1DebugCurrents)
 
 // P(N, IMU_ROLL, TelemPacket)                                                  \
   // P(N, IMU_X, TelemPacket)                                                     \
@@ -43,6 +44,7 @@
   P(N, CountsInfo)                                                            \
   P(N, BrakeCountsInfo)                                                            \
   P(N, MsgInverterHS1TorqueFeedback)                                           \
+  P(N, MsgInverterHD1DebugCurrents)                                           \
   P(N, PedalInfo)                                                              \
   P(N, PedalFaultInfo)                                                         \
   P(N, ThrottlePacket)                                                         \
@@ -123,6 +125,12 @@ typedef struct __attribute__((__packed__)) BrakeCountsInfo {
     uint16_t zero_two;
 } BrakeCountsInfo;
 
+typedef struct __attribute__((__packed__)) MsgInverterHD1DebugCurrents {
+	int16_t Iq_ref;
+	int16_t Id_ref;
+	int16_t Iq_act;
+	int16_t Id_act;
+} MsgInverterHD1DebugCurrents;
 
 TELOMETER_INSTANCE(Telemetry, PACKET_TYPES, PACKETS)
 
