@@ -142,7 +142,7 @@ const CANBackend: type = struct {
         }
     }
 
-    pub fn translateHeader(_: Self, id: u32) !tm.Header {
+    pub fn translateHeader(self: Self, id: u32) !tm.Header {
         return switch (id) {
             0x300 => tm.Header{ .id = 1 },
             0x301 => tm.Header{ .id = 4 },
@@ -150,11 +150,17 @@ const CANBackend: type = struct {
             0x709 => tm.Header{ .id = 7 },
             0x19107171 | 1 << 31 => tm.Header{ .id = 8 },
             0x708 => tm.Header{ .id = 6 },
+            0x401 => tm.Header{ .id = 11 },
+            0x002 => tm.Header{ .id = 12 },
             0 => tm.Header{ .id = 0 },
-
             (0x1918FF71 | 1 << 31) => tm.Header{ .id = 5 },
-            (0x1918FF71 | 1 << 31) => tm.Header{ .id = 4 },
             (0x1928FF71 | 1 << 31) => tm.Header{ .id = 9 },
+            (0x704) => {
+                if (self.frame.data[0] == 3 and self.frame.data[1] == 1) {
+                    return tm.Header{ .id = 10 };
+                }
+                return CanError.UnknownCanID;
+            },
             // 1799 => tm.Header{ .id = 2 },
             else => CanError.UnknownCanID,
         };

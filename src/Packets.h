@@ -14,6 +14,9 @@
   P(N, BrakeCounts, BrakeCountsInfo)                                           \
   P(N, inverterHC1, MsgInverterHC1Demands)                                     \
   P(N, inverterHD1, MsgInverterHD1DebugCurrents)                               \
+  P(N, Voltage, MsgVoltageResponse)                               \
+  P(N, MinMax, MsgCarVoltageDistribution)                               \
+  P(N, AMS, TelemPacket)                               \
   P(N, IMU_PITCH, TelemPacket)
 
 // P(N, IMU_ROLL, TelemPacket)                                                  \
@@ -47,6 +50,8 @@
   P(N, BrakeCountsInfo)                                                        \
   P(N, MsgInverterHS1TorqueFeedback)                                           \
   P(N, MsgInverterHC1Demands)                                                  \
+  P(N, MsgVoltageResponse)                                                  \
+  P(N, MsgCarVoltageDistribution)\
   P(N, MsgCarHeartbeat)                                                        \
   P(N, MsgInverterHD1DebugCurrents)                                            \
   P(N, PedalInfo)                                                              \
@@ -147,12 +152,25 @@ enum CarStatus : uint8_t { OK = 0, NOT_OK, DRIVER_DECEASED, ON_FIRE };
 
 typedef struct __attribute__((__packed__)) MsgCarHeartbeat {
   uint32_t tick;
-  CarStatus status;
-  uint8_t rtd_status : 1;
-  uint8_t reset : 1;
+  uint8_t status;
+  bool rtd_status;
   uint8_t errno_;
   uint8_t caught;
 } MsgCarHeartbeat;
+
+  
+typedef struct __attribute__((__packed__)) MsgVoltageResponse {
+    uint8_t segmentID;
+    uint8_t index;
+    uint16_t voltages[3];
+} MsgVoltageResponse;
+
+typedef struct __attribute__((__packed__)) MsgCarVoltageDistribution {
+    uint16_t min_voltage;
+    uint16_t max_voltage;
+    uint16_t avg_voltage;
+    uint16_t current;
+} MsgCarVoltageDistribution;
 
 TELOMETER_INSTANCE(Telemetry, PACKET_TYPES, PACKETS)
 
