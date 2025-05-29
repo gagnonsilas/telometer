@@ -333,12 +333,14 @@ pub const Plot = struct {
     const Self = @This();
     paused: bool,
     data_pointers: std.ArrayList(PlotData),
+    data_pointers2: std.ArrayList(PlotData),
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
             .paused = false,
             .data_pointers = std.ArrayList(PlotData).init(allocator),
+            .data_pointers2 = std.ArrayList(PlotData).init(allocator),
             .allocator = allocator,
         };
     }
@@ -349,6 +351,7 @@ pub const Plot = struct {
         if (c.igBegin("Plot", null, 0)) {
             if (c.ImPlot_BeginPlot("test", c.ImVec2{ .x = -1, .y = -50 }, 0)) {
                 c.ImPlot_SetupAxes("Time", "", 0, 0);
+                c.ImPlot_SetupAxis(c.ImAxis_Y2, "", c.ImPlotAxisFlags_Opposite);
 
                 c.ImPlot_SetupAxisLimits(0, current_time - 10, current_time, c.ImPlotCond_Once);
                 c.ImPlot_SetupAxisScale_PlotScale(c.ImAxis_X1, c.ImPlotScale_Time);
@@ -368,11 +371,36 @@ pub const Plot = struct {
                     c.ImPlot_EndDragDropTarget();
                 }
 
+                if (c.ImPlot_BeginDragDropTargetAxis(c.ImAxis_Y2)) {
+                    if (c.igAcceptDragDropPayload("f32", c.ImGuiDragDropFlags_None)) |payload| {
+                        self.data_pointers2.append(@as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
+                        self.data_pointers2.items[self.data_pointers2.items.len - 1].initData(self.allocator, current_time);
+                    }
+                    c.ImPlot_EndDragDropTarget();
+                }
+
                 // if (self.data_pointers.items.len > 0) {
                 //     std.debug.print("{},", .{current_time});
                 // }
 
                 for (self.data_pointers.items) |*data| {
+                    if (c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1].Range.Max >= current_time) {
+                        data.update(current_time);
+                    }
+
+                    c.ImPlot_PlotLine_doublePtrdoublePtr(
+                        data.name,
+                        &data.data.items[0].time,
+                        &data.data.items[0].value,
+                        @intCast(data.data.items.len),
+                        c.ImPlotLineFlags_None,
+                        data.offset,
+                        @intCast(@sizeOf(f64) * 2),
+                    );
+                }
+
+                c.ImPlot_SetAxes(c.ImAxis_X1, c.ImAxis_Y2);
+                for (self.data_pointers2.items) |*data| {
                     if (c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1].Range.Max >= current_time) {
                         data.update(current_time);
                     }
