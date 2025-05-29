@@ -6,7 +6,6 @@ const telometer = @cImport({
 pub const Data = extern struct {
     pointer: *anyopaque,
     size: usize,
-    type: u8,
     queued: bool,
     locked: bool,
     received: bool,
