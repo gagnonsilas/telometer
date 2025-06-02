@@ -28,11 +28,11 @@ pub const Dashboard = struct {
     const Self = @This();
     window: *c.SDL_Window,
     gl_context: c.SDL_GLContext,
-    ctx: *c.ImGuiContext,
-    io: *c.ImGuiContext,
-    context: *c.ImGuiContext,
+    ctx: ?*c.ImGuiContext,
+    io: [*c]c.ImGuiIO,
+    context: [*c]c.ImPlotContext,
 
-    pub fn init() Self {
+    pub fn init() !Self {
         var self: Self = .{
             .window = undefined,
             .gl_context = undefined,
@@ -64,8 +64,8 @@ pub const Dashboard = struct {
             c.SDL_WINDOW_OPENGL | c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_ALLOW_HIGHDPI,
         ) orelse return error.GLFWCreateWindowFailed;
 
-        self.gl_context = c.SDL_GL_CreateContext(window);
-        if (0 != c.SDL_GL_MakeCurrent(window, gl_context))
+        self.gl_context = c.SDL_GL_CreateContext(self.window);
+        if (0 != c.SDL_GL_MakeCurrent(self.window, self.gl_context))
             return error.GLMakeCurrentFailed;
 
         if (0 != c.SDL_GL_SetSwapInterval(1))
@@ -78,16 +78,17 @@ pub const Dashboard = struct {
         self.ctx = c.igCreateContext(null);
 
         self.io = c.igGetIO();
-        io.*.ConfigFlags |= c.ImGuiConfigFlags_NavEnableKeyboard;
-        io.*.ConfigFlags |= c.ImGuiConfigFlags_DockingEnable;
+        self.io.*.ConfigFlags |= c.ImGuiConfigFlags_NavEnableKeyboard;
+        self.io.*.ConfigFlags |= c.ImGuiConfigFlags_DockingEnable;
 
         // c.igStyleColorsDark(null);
 
-        _ = c.ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+        _ = c.ImGui_ImplSDL2_InitForOpenGL(self.window, self.gl_context);
 
         _ = c.ImGui_ImplOpenGL3_Init("#version 410");
 
         self.context = c.ImPlot_CreateContext() orelse @panic("Kill yourself");
+        return self;
     }
 
     pub fn init_frame(_: *Self) void {
@@ -108,7 +109,7 @@ pub const Dashboard = struct {
         c.glClear(c.GL_COLOR_BUFFER_BIT);
         c.ImGui_ImplOpenGL3_RenderDrawData(c.igGetDrawData());
 
-        c.SDL_GL_SwapWindow(window);
+        c.SDL_GL_SwapWindow(self.window);
     }
 
     pub fn end(self: *Self) void {
@@ -441,6 +442,17 @@ pub const Plot = struct {
             .data_pointers2 = std.ArrayList(PlotData).init(allocator),
             .allocator = allocator,
         };
+    }
+
+    pub fn cleanup(self: *Self) void {
+        for (self.data_pointers.items) |pointer| {
+            pointer.data.deinit();
+        }
+        self.data_pointers.deinit();
+        for (self.data_pointers2.items) |pointer| {
+            pointer.data.deinit();
+        }
+        self.data_pointers2.deinit();
     }
 
     pub fn update(self: *Self) void {
