@@ -24,6 +24,104 @@ pub fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error {}: {s}\n", .{ err, desc });
 }
 
+pub const Dashboard = struct {
+    const Self = @This();
+    window: *c.SDL_Window,
+    gl_context: c.SDL_GLContext,
+    ctx: *c.ImGuiContext,
+    io: *c.ImGuiContext,
+    context: *c.ImGuiContext,
+
+    pub fn init() Self {
+        var self: Self = .{
+            .window = undefined,
+            .gl_context = undefined,
+            .ctx = undefined,
+            .io = undefined,
+            .context = undefined,
+        };
+
+        if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
+            return error.GLFWInitFailed;
+        }
+
+        if (0 != c.SDL_GL_SetAttribute(c.SDL_GL_CONTEXT_MAJOR_VERSION, 3)) {
+            return error.FailedToSetGLVersion;
+        }
+        if (0 != c.SDL_GL_SetAttribute(c.SDL_GL_CONTEXT_MINOR_VERSION, 3)) {
+            return error.FailedToSetGLVersion;
+        }
+        if (0 != c.SDL_GL_SetAttribute(c.SDL_GL_CONTEXT_PROFILE_MASK, c.SDL_GL_CONTEXT_PROFILE_CORE)) {
+            return error.FailedToSetGLVersion;
+        }
+
+        self.window = c.SDL_CreateWindow(
+            "Telometer Dashboard",
+            c.SDL_WINDOWPOS_CENTERED,
+            c.SDL_WINDOWPOS_CENTERED,
+            900,
+            900,
+            c.SDL_WINDOW_OPENGL | c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_ALLOW_HIGHDPI,
+        ) orelse return error.GLFWCreateWindowFailed;
+
+        self.gl_context = c.SDL_GL_CreateContext(window);
+        if (0 != c.SDL_GL_MakeCurrent(window, gl_context))
+            return error.GLMakeCurrentFailed;
+
+        if (0 != c.SDL_GL_SetSwapInterval(1))
+            return error.GLMakeCurrentFailed;
+
+        if (c.gladLoadGLLoader(c.SDL_GL_GetProcAddress) == 0) {
+            return error.FailedToLoadOpenGL;
+        }
+
+        self.ctx = c.igCreateContext(null);
+
+        self.io = c.igGetIO();
+        io.*.ConfigFlags |= c.ImGuiConfigFlags_NavEnableKeyboard;
+        io.*.ConfigFlags |= c.ImGuiConfigFlags_DockingEnable;
+
+        // c.igStyleColorsDark(null);
+
+        _ = c.ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+
+        _ = c.ImGui_ImplOpenGL3_Init("#version 410");
+
+        self.context = c.ImPlot_CreateContext() orelse @panic("Kill yourself");
+    }
+
+    pub fn init_frame(_: *Self) void {
+        c.ImGui_ImplOpenGL3_NewFrame();
+        c.ImGui_ImplSDL2_NewFrame();
+        c.igNewFrame();
+
+        _ = c.igDockSpaceOverViewport(0, null, 0, c.ImGuiWindowClass_ImGuiWindowClass());
+    }
+
+    pub fn render(self: *Self, clear_color: c.ImVec4) void {
+        c.igRender();
+        var width: c_int = undefined;
+        var height: c_int = undefined;
+        c.SDL_GetWindowSize(self.window, &width, &height);
+        c.glViewport(0, 0, width, height);
+        c.glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+        c.glClear(c.GL_COLOR_BUFFER_BIT);
+        c.ImGui_ImplOpenGL3_RenderDrawData(c.igGetDrawData());
+
+        c.SDL_GL_SwapWindow(window);
+    }
+
+    pub fn end(self: *Self) void {
+        c.ImPlot_DestroyContext(self.context);
+        c.ImGui_ImplOpenGL3_Shutdown();
+        c.ImGui_ImplSDL2_Shutdown();
+        c.igDestroyContext(self.ctx);
+        c.SDL_GL_DeleteContext(self.gl_context);
+        c.SDL_DestroyWindow(self.window);
+        c.SDL_Quit();
+    }
+};
+
 pub fn theme_fluent() void {
     // var io = c.igGetIO();
 
