@@ -3,6 +3,8 @@ const telometer = @cImport({
     @cInclude("Telometer.h");
 });
 
+const log = @import("log.zig");
+
 pub const Data = extern struct {
     pointer: *anyopaque,
     size: usize,
@@ -13,23 +15,26 @@ pub const Data = extern struct {
 
 pub const Header = telometer.TelometerHeader;
 
-pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) type {
+pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, comptime InstanceStruct: type) type {
     return struct {
         const Self = @This();
         const count: usize = @typeInfo(PacketStruct).Struct.fields.len;
+        const log_header: log.Header = log.Header.init(12, InstanceStruct);
         backend: Backend,
         next_packet: u16 = 0,
         packet_struct: []Data,
+        log: log.Log,
 
         pub fn init(allocator: std.mem.Allocator, backend: Backend, packet_struct: *PacketStruct) !Self {
             inline for (@typeInfo(PacketStruct).Struct.fields) |packet| {
                 @field(packet_struct, packet.name).pointer = @ptrCast(try allocator.alloc(u8, @field(packet_struct, packet.name).size));
             }
 
-            return Self{
+            return .{
                 .backend = backend,
                 // .packet_struct = &packet_struct,
                 .packet_struct = std.mem.bytesAsSlice(Data, std.mem.asBytes(packet_struct)),
+                .log = try log.Log.init(log_header, InstanceStruct),
             };
         }
 
@@ -56,7 +61,6 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) ty
                 packet.locked = false;
             }
 
-            var i: u32 = 0;
             while (self.backend.getNextHeader()) |header| {
                 if (header.id >= count) {
                     std.log.err("Invalid header", .{});
@@ -73,7 +77,6 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type) ty
                 self.backend.read(@as([*]u8, @ptrCast(packet.pointer)), packet.size) catch {};
 
                 packet.received = true;
-                i += 1;
             }
 
             self.backend.update();

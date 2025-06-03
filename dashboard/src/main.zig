@@ -26,7 +26,7 @@ fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
 
 var backend: Backend = undefined;
 var packets: telemetry.TelemetryPackets = undefined;
-var instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets) = undefined;
+var instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes) = undefined;
 
 var plot: dash.Plot = undefined;
 
@@ -41,7 +41,7 @@ pub fn main() !void {
 
     packets = telemetry.initTelemetryPackets();
     backend = Backend.init();
-    instance = try tm.TelometerInstance(Backend, telemetry.TelemetryPackets).init(
+    instance = try tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes).init(
         std.heap.c_allocator,
         backend,
         &packets,
