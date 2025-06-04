@@ -1,6 +1,10 @@
 const std = @import("std");
 const tm = @import("Telometer.zig");
 
+fn packedSize(comptime T: type) usize {
+    return @divExact(@bitSizeOf(T), 8);
+}
+
 pub const Header = packed struct {
     const Self = @This();
     git_hash: u256,
@@ -30,10 +34,13 @@ pub fn logPicker() void {}
 
 pub fn Log(comptime PacketsStruct: type) type {
     return struct {
-        const Self = @This();
+        const Field = packed struct { id: u16, size: u16 };
+        const FieldCorrection = struct { actualSize: usize };
+        const numFields = @typeInfo(PacketsStruct).Struct.fields.len;
         const BlockHeader = packed struct {
             next_header: u16,
         };
+        const Self = @This();
         file: std.fs.File,
         header: Header,
         data: *PacketsStruct,
@@ -56,9 +63,9 @@ pub fn Log(comptime PacketsStruct: type) type {
             self.reader = std.io.bufferedReader(self.file.reader());
             self.writer = std.io.bufferedWriter(self.file.writer());
 
-            try self.writer.writer().writeStruct(header);
+            // try self.writer.writer().writeStruct(header);
 
-            try self.writer.writer().writeStruct(@as(packed struct { a: u32 }, .{ .a = @sizeOf(Header) }));
+            _ = try self.file.writer().write(&@as([packedSize(Header)]u8, @bitCast(header)));
 
             inline for (@typeInfo(PacketsStruct).Struct.fields, 0..) |packet, i| {
                 try self.writer.writer().writeStruct(@as(
@@ -74,6 +81,31 @@ pub fn Log(comptime PacketsStruct: type) type {
             }
 
             try self.writer.flush();
+
+            return self;
+        }
+
+        pub fn initFromFile(filename: []const u8, data: *PacketsStruct) !Self {
+            var self = Self{
+                .file = try std.fs.cwd().openFile(filename, .{ .read = true }),
+                .header = undefined,
+                .data = data,
+                .reader = undefined,
+                .writer = undefined,
+            };
+
+            self.reader = std.io.bufferedReader(self.file.reader());
+            self.writer = std.io.bufferedWriter(self.file.writer());
+
+            var buf: [packedSize(Header)]u8 = undefined;
+            try self.file.reader().readNoEof(&buf);
+            self.header = @bitCast(buf);
+
+            inline for (@typeInfo(PacketsStruct).Struct.fields, 0..) |packet, i| {
+                const f = try self.file.reader().readStruct(Field);
+                if (f.id != i) return error.BadHeader;
+                if (f.size != @sizeOf(packet.type)) self.fieldCorrections[i] = .{ .actualSize = f.size };
+            }
 
             return self;
         }
