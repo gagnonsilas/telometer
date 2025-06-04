@@ -8,6 +8,10 @@ pub const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
 
+pub const nfd = @cImport({
+    @cInclude("nfd.h");
+});
+
 const mat = @import("mat.zig");
 const math = std.math;
 
@@ -18,6 +22,8 @@ const telemetry = @cImport({
     @cInclude("Packets.h");
 });
 
+const log = tm.log;
+
 const dash = @import("dashboard.zig");
 
 fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
@@ -26,9 +32,25 @@ fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
 
 var backend: Backend = undefined;
 var packets: telemetry.TelemetryPackets = undefined;
-var instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes) = undefined;
+const TelometerInstance = tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes);
+var instance: TelometerInstance = undefined;
 
 var plot: dash.Plot = undefined;
+
+pub fn openFile() void {
+    _ = nfd.NFD_Init();
+    var out_path: [*c]u8 = null;
+
+    const filters = [1]nfd.nfdu8filteritem_t{.{ .name = "Source code", .spec = "c,cpp,cc" }};
+    const args: nfd.nfdopendialogu8args_t = .{
+        .filterList = @ptrCast(&filters[0]),
+        .filterCount = 1,
+    };
+
+    const result: nfd.nfdresult_t = nfd.NFD_OpenDialogU8_With(&out_path, &args);
+
+    _ = result;
+}
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -41,7 +63,12 @@ pub fn main() !void {
 
     packets = telemetry.initTelemetryPackets();
     backend = Backend.init();
-    instance = try tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes).init(
+
+    // const logger = try log.Log(telemetry.TelemetryTypes).init(
+    //     TelometerInstance.log_header,
+    // );
+    // _ = logger;
+    instance = try TelometerInstance.init(
         std.heap.c_allocator,
         backend,
         &packets,
@@ -76,6 +103,12 @@ pub fn main() !void {
         if (c.igBegin("Yippee!", null, 0)) {
             if (c.igButton("Hi Silas!", .{})) {
                 running = false;
+            }
+            if (c.igButton("file dialogue???", .{})) {
+                // nfd.openDialog(std.testing.allocator, null, null);
+                // _ = try nfd.openFileDialog("txt", "/home/silas/projects/telometer/");
+                // _ = open_path;
+                openFile();
             }
         }
 

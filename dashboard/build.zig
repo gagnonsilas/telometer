@@ -119,6 +119,14 @@ pub fn build(b: *std.Build) void {
     // exe.linkLibrary(telometer_dep.artifact("Telometer"));
     b.installArtifact(exe);
 
+    // Native File Dialogue
+    const nfd_dependency = b.dependency("nativefiledialog-extended", .{
+        .target = target,
+        .optimize = optimize,
+        .portal = true,
+    });
+    exe.linkLibrary(nfd_dependency.artifact("nfd"));
+
     // glad
     const glad = b.addStaticLibrary(.{
         .name = "glad",

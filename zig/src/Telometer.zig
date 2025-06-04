@@ -3,7 +3,7 @@ const telometer = @cImport({
     @cInclude("Telometer.h");
 });
 
-const log = @import("log.zig");
+const log = @import("Log.zig");
 
 pub const Data = extern struct {
     pointer: *anyopaque,
@@ -22,20 +22,32 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
         const log_header: log.Header = log.Header.init(12, InstanceStruct);
         backend: Backend,
         next_packet: u16 = 0,
+        data: *InstanceStruct,
         packet_struct: []Data,
-        log: log.Log,
+        log: log.Log(InstanceStruct),
 
         pub fn init(allocator: std.mem.Allocator, backend: Backend, packet_struct: *PacketStruct) !Self {
-            inline for (@typeInfo(PacketStruct).Struct.fields) |packet| {
-                @field(packet_struct, packet.name).pointer = @ptrCast(try allocator.alloc(u8, @field(packet_struct, packet.name).size));
-            }
-
-            return .{
+            var self: Self = .{
                 .backend = backend,
                 // .packet_struct = &packet_struct,
-                .packet_struct = std.mem.bytesAsSlice(Data, std.mem.asBytes(packet_struct)),
-                .log = try log.Log.init(log_header, InstanceStruct),
+                .data = @ptrCast(try allocator.alloc(InstanceStruct, 1)),
+                .packet_struct = undefined,
+                .log = undefined,
             };
+
+            inline for (@typeInfo(PacketStruct).Struct.fields) |packet| {
+                @field(packet_struct, packet.name).pointer = @ptrCast(&(@field(self.data.*, packet.name)));
+            }
+
+            self.log = try log.Log(InstanceStruct).init(log_header, self.data);
+            self.packet_struct = std.mem.bytesAsSlice(Data, std.mem.asBytes(packet_struct));
+
+            return self;
+        }
+
+        pub fn loadNewLog(self: *Self, logger: log.Log(InstanceStruct)) void {
+            self.log.close();
+            self.log = logger;
         }
 
         pub fn update(self: *Self) void {
@@ -56,6 +68,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
                     self.next_packet = current_id;
                     break;
                 }
+                self.log.logPacket(.{ .id = current_id }, packet.*) catch unreachable;
 
                 packet.queued = false;
                 packet.locked = false;
@@ -75,6 +88,8 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
                 }
 
                 self.backend.read(@as([*]u8, @ptrCast(packet.pointer)), packet.size) catch {};
+
+                self.log.logPacket(header, packet.*) catch unreachable;
 
                 packet.received = true;
             }

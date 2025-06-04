@@ -119,6 +119,10 @@
             zig
             zls
             compiledb
+            gtk3
+            atkmm
+            glib
+            zenity
           ];
 
           shellHook = ''
