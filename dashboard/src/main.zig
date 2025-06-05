@@ -37,18 +37,25 @@ var instance: TelometerInstance = undefined;
 
 var plot: dash.Plot = undefined;
 
-pub fn openFile() void {
+pub fn openFile(out_path: [*c][*c]u8) void {
     _ = nfd.NFD_Init();
-    var out_path: [*c]u8 = null;
 
-    const filters = [1]nfd.nfdu8filteritem_t{.{ .name = "Source code", .spec = "c,cpp,cc" }};
+    const filters = [1]nfd.nfdu8filteritem_t{.{ .name = "Telometer Log", .spec = "tl" }};
     const args: nfd.nfdopendialogu8args_t = .{
         .filterList = @ptrCast(&filters[0]),
         .filterCount = 1,
     };
 
-    const result: nfd.nfdresult_t = nfd.NFD_OpenDialogU8_With(&out_path, &args);
+    const result: nfd.nfdresult_t = nfd.NFD_OpenDialogU8_With(out_path, &args);
 
+    if (nfd.NFD_GetError()) |ptr| {
+        std.debug.print("{s}\n", .{
+            std.mem.sliceTo(ptr, 0),
+        });
+    }
+    // return error.NfdError;
+
+    std.debug.print("file: {s}", .{out_path.*});
     _ = result;
 }
 
@@ -85,6 +92,11 @@ pub fn main() !void {
     const clear_color = c.ImVec4{ .x = 0.45, .y = 0.55, .z = 0.60, .w = 1.00 };
 
     var running: bool = true;
+
+    var out_path: [*c]u8 = undefined;
+
+    // out_path = null;
+
     while (running) {
         var event: c.SDL_Event = undefined;
 
@@ -104,11 +116,13 @@ pub fn main() !void {
             if (c.igButton("Hi Silas!", .{})) {
                 running = false;
             }
+            // _ = c.igInputText("File:", out_path, 0, 0, 0, 0);
             if (c.igButton("file dialogue???", .{})) {
                 // nfd.openDialog(std.testing.allocator, null, null);
                 // _ = try nfd.openFileDialog("txt", "/home/silas/projects/telometer/");
                 // _ = open_path;
-                openFile();
+
+                _ = try std.Thread.spawn(.{}, openFile, .{&out_path});
             }
         }
 
