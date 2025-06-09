@@ -5,6 +5,8 @@ fn packedSize(comptime T: type) usize {
     return @divExact(@bitSizeOf(T), 8);
 }
 
+const HEADER_VERSION = 1;
+
 pub const Header = packed struct {
     const Self = @This();
     git_hash: u256,
@@ -13,6 +15,7 @@ pub const Header = packed struct {
     data_size: usize,
     packet_count: u32,
     block_header_size: u32,
+    version: u32 = HEADER_VERSION,
 
     pub fn init(packet_header_hash: u256, comptime PacketTypes: type) Self {
         return .{
@@ -22,6 +25,7 @@ pub const Header = packed struct {
             .data_size = @sizeOf(PacketTypes),
             .packet_count = @typeInfo(PacketTypes).Struct.fields.len,
             .block_header_size = 2 + @sizeOf(PacketTypes),
+            .version = HEADER_VERSION,
         };
     }
 };
@@ -38,14 +42,18 @@ pub fn Log(comptime PacketsStruct: type) type {
         const FieldCorrection = struct { actualSize: usize };
         const numFields = @typeInfo(PacketsStruct).Struct.fields.len;
         const BlockHeader = packed struct {
+            timestamp: i64,
             next_header: u16,
         };
         const Self = @This();
         file: std.fs.File,
         header: Header,
         data: *PacketsStruct,
-        reader: std.io.BufferedReader(4096, std.fs.File.Reader),
-        writer: std.io.BufferedWriter(4096, std.fs.File.Writer),
+        log_data: PacketsStruct = undefined,
+        fieldCorrections: [numFields]?FieldCorrection = [1]?FieldCorrection{null} ** numFields,
+        reader: std.io.BufferedReader(4096, std.fs.File.Reader) = undefined,
+        writer: std.io.BufferedWriter(4096, std.fs.File.Writer) = undefined,
+        currentTime: i64,
 
         pub fn init(header: Header, data: *PacketsStruct) !Self {
             std.fs.cwd().access("log", .{}) catch {
@@ -53,11 +61,10 @@ pub fn Log(comptime PacketsStruct: type) type {
             };
 
             var self = Self{
-                .file = try std.fs.cwd().createFile("log/test.tl", .{}),
+                .file = try std.fs.cwd().createFile("log/test.tl", .{ .read = true }),
                 .header = header,
                 .data = data,
-                .reader = undefined,
-                .writer = undefined,
+                .currentTime = std.time.microTimestamp(),
             };
 
             self.reader = std.io.bufferedReader(self.file.reader());
@@ -87,15 +94,14 @@ pub fn Log(comptime PacketsStruct: type) type {
 
         pub fn initFromFile(filename: []const u8, data: *PacketsStruct) !Self {
             var self = Self{
-                .file = try std.fs.cwd().openFile(filename, .{ .read = true }),
+                .file = try std.fs.cwd().openFile(filename, .{ .mode = .read_only }),
                 .header = undefined,
                 .data = data,
-                .reader = undefined,
-                .writer = undefined,
+                .currentTime = 0, //FIXME
             };
 
             self.reader = std.io.bufferedReader(self.file.reader());
-            self.writer = std.io.bufferedWriter(self.file.writer());
+            // self.writer = std.io.bufferedWriter(self.file.writer());
 
             var buf: [packedSize(Header)]u8 = undefined;
             try self.file.reader().readNoEof(&buf);
@@ -104,8 +110,19 @@ pub fn Log(comptime PacketsStruct: type) type {
             inline for (@typeInfo(PacketsStruct).Struct.fields, 0..) |packet, i| {
                 const f = try self.file.reader().readStruct(Field);
                 if (f.id != i) return error.BadHeader;
-                if (f.size != @sizeOf(packet.type)) self.fieldCorrections[i] = .{ .actualSize = f.size };
+                if (f.size != @sizeOf(packet.type)) {
+                    self.fieldCorrections[i] = .{ .actualSize = f.size };
+                    std.debug.print("HEADER MISMATCH: \"{s}\" expected size:{}, found size:{}\n", .{
+                        packet.name,
+                        @sizeOf(packet.type),
+                        f.size,
+                    });
+                }
             }
+
+            std.debug.print("Field Corrections: {any}\n", .{self.fieldCorrections});
+
+            std.debug.print("loaded file: {s}\n", .{filename});
 
             return self;
         }
@@ -132,6 +149,35 @@ pub fn Log(comptime PacketsStruct: type) type {
             try self.writer.flush();
         }
 
+        pub fn findBlock(self: *Self, micros: i64) i32 {
+            const file_len = self.file.getEndPos() catch unreachable;
+            const blocks = file_len / self.header.block_size;
+            var seek_block = blocks / 2;
+            var search_space_left = blocks / 2;
+            while (true) {
+                const seek_pos = seek_block * self.header.block_size;
+                self.file.seekTo(seek_pos) catch unreachable;
+                const header = self.file.reader().readStruct(BlockHeader) catch unreachable;
+                if (header.timestamp > micros) {}
+
+                std.debug.print("fileSize: {}, seek_pos: {}, blocks: {}, file_pos: {},   \t header: {}, micros: {}\n", .{
+                    file_len,
+                    seek_pos,
+                    blocks,
+                    self.file.getPos() catch unreachable,
+                    header,
+                    micros,
+                });
+                break;
+            }
+            return 0;
+        }
+
+        pub fn seekToTime(self: *Self, micros: i64) void {
+            _ = self.findBlock(micros);
+            return;
+        }
+
         pub fn writeBlockHeader(self: *Self, block_index: u64, block_overflow: u64) !void {
             if (self.writer.end + self.header.block_header_size > self.writer.buf.len) {
                 return LogError.BufferedWriterOverflow;
@@ -148,6 +194,7 @@ pub fn Log(comptime PacketsStruct: type) type {
             self.writer.end = block_end;
 
             const block_header: BlockHeader = .{
+                .timestamp = std.time.microTimestamp(),
                 .next_header = @intCast((block_index * self.header.block_size) + self.header.block_header_size + block_overflow),
             };
 

@@ -8,10 +8,15 @@ pub const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
 
+pub const nfd = @cImport({
+    @cInclude("nfd.h");
+});
+
 const mat = @import("mat.zig");
 const math = std.math;
 
 const tm = @import("telometer");
+const log = tm.log;
 const Backend = @import("backend.zig").Backend;
 
 const telemetry = @cImport({
@@ -22,6 +27,62 @@ const stdout = std.io.getStdOut().writer();
 
 pub fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error {}: {s}\n", .{ err, desc });
+}
+
+pub fn openFile(out_path: []u8) void {
+    _ = nfd.NFD_Init();
+
+    const filters = [1]nfd.nfdu8filteritem_t{.{ .name = "Telometer Log", .spec = "tl" }};
+    const args: nfd.nfdopendialogu8args_t = .{
+        .filterList = @ptrCast(&filters[0]),
+        .filterCount = 1,
+    };
+
+    var path: [*c]u8 = null;
+
+    const result: nfd.nfdresult_t = nfd.NFD_OpenDialogU8_With(&path, &args);
+
+    if (result != nfd.NFD_OKAY) {
+        if (nfd.NFD_GetError()) |ptr| {
+            std.debug.print("{s}\n", .{
+                std.mem.sliceTo(ptr, 0),
+            });
+        }
+        return;
+        // return error.NfdError;
+    }
+
+    const len = std.mem.len(path);
+    if (len > out_path.len) {
+        std.debug.print("file path too long: {s}\n", .{path});
+        return;
+    } else {
+        @memcpy(out_path[0 .. len + 1], path[0 .. len + 1]);
+    }
+
+    nfd.NFD_FreePathU8(path);
+}
+
+var log_path: [256]u8 = undefined;
+
+pub fn loadLogger(instance: anytype) ?@TypeOf(instance).Logger {
+    defer c.igEnd();
+    if (c.igBegin("Load Log", null, 0)) {
+        _ = c.igInputText("Log File", &log_path, 256, c.ImGuiInputTextFlags_None, null, null);
+        if (c.igButton("OPEN", .{})) {
+            _ = (std.Thread.spawn(.{}, openFile, .{&log_path}) catch unreachable).detach();
+        }
+        c.igSameLine(0, 8);
+        if (c.igButton("LOAD", .{})) {
+            return @TypeOf(instance).Logger.initFromFile(log_path[0..std.mem.len(@as([*c]u8, @ptrCast(&log_path)))], instance.data) catch |e| {
+                if (e == error.FileNotFound) {
+                    std.debug.print("Error: {}\n", .{e});
+                }
+                return null;
+            };
+        }
+    }
+    return null;
 }
 
 pub const Dashboard = struct {

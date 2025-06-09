@@ -3,7 +3,7 @@ const telometer = @cImport({
     @cInclude("Telometer.h");
 });
 
-const log = @import("Log.zig");
+pub const log = @import("Log.zig");
 
 pub const Data = extern struct {
     pointer: *anyopaque,
@@ -20,11 +20,12 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
         const Self = @This();
         const count: usize = @typeInfo(PacketStruct).Struct.fields.len;
         const log_header: log.Header = log.Header.init(12, InstanceStruct);
+        pub const Logger = log.Log(InstanceStruct);
         backend: Backend,
         next_packet: u16 = 0,
         data: *InstanceStruct,
         packet_struct: []Data,
-        log: log.Log(InstanceStruct),
+        log: Logger,
 
         pub fn init(allocator: std.mem.Allocator, backend: Backend, packet_struct: *PacketStruct) !Self {
             var self: Self = .{
