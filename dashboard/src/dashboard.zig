@@ -74,10 +74,9 @@ pub fn loadLogger(instance: anytype) ?@TypeOf(instance).Logger {
         }
         c.igSameLine(0, 8);
         if (c.igButton("LOAD", .{})) {
+            std.debug.print(" what2?? \n", .{});
             return @TypeOf(instance).Logger.initFromFile(log_path[0..std.mem.len(@as([*c]u8, @ptrCast(&log_path)))], instance.data) catch |e| {
-                if (e == error.FileNotFound) {
-                    std.debug.print("Error: {}\n", .{e});
-                }
+                std.debug.print("Error: {}\n", .{e});
                 return null;
             };
         }

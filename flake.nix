@@ -123,6 +123,7 @@
             atkmm
             glib
             zenity
+            gdb
           ];
 
           shellHook = ''

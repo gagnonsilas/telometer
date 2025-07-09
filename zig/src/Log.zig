@@ -15,9 +15,12 @@ pub const Header = packed struct {
     data_size: usize,
     packet_count: u32,
     block_header_size: u32,
+    uid: u64,
+    start_time: i64,
+    end_time: i64,
     version: u32 = HEADER_VERSION,
 
-    pub fn init(packet_header_hash: u256, comptime PacketTypes: type) Self {
+    pub fn init(packet_header_hash: u256, comptime PacketTypes: type, uid: u64, start_time: i64) Self {
         return .{
             .git_hash = 1,
             .packet_header_hash = packet_header_hash,
@@ -25,6 +28,9 @@ pub const Header = packed struct {
             .data_size = @sizeOf(PacketTypes),
             .packet_count = @typeInfo(PacketTypes).Struct.fields.len,
             .block_header_size = 2 + @sizeOf(PacketTypes),
+            .uid = uid,
+            .start_time = start_time,
+            .end_time = start_time,
             .version = HEADER_VERSION,
         };
     }
@@ -53,7 +59,7 @@ pub fn Log(comptime PacketsStruct: type) type {
         fieldCorrections: [numFields]?FieldCorrection = [1]?FieldCorrection{null} ** numFields,
         reader: std.io.BufferedReader(4096, std.fs.File.Reader) = undefined,
         writer: std.io.BufferedWriter(4096, std.fs.File.Writer) = undefined,
-        currentTime: i64,
+        current_time: i64,
 
         pub fn init(header: Header, data: *PacketsStruct) !Self {
             std.fs.cwd().access("log", .{}) catch {
@@ -64,7 +70,7 @@ pub fn Log(comptime PacketsStruct: type) type {
                 .file = try std.fs.cwd().createFile("log/test.tl", .{ .read = true }),
                 .header = header,
                 .data = data,
-                .currentTime = std.time.microTimestamp(),
+                .current_time = std.time.microTimestamp(),
             };
 
             self.reader = std.io.bufferedReader(self.file.reader());
@@ -72,7 +78,7 @@ pub fn Log(comptime PacketsStruct: type) type {
 
             // try self.writer.writer().writeStruct(header);
 
-            _ = try self.file.writer().write(&@as([packedSize(Header)]u8, @bitCast(header)));
+            _ = try self.writer.writer().write(&@as([packedSize(Header)]u8, @bitCast(header)));
 
             inline for (@typeInfo(PacketsStruct).Struct.fields, 0..) |packet, i| {
                 try self.writer.writer().writeStruct(@as(
@@ -92,12 +98,16 @@ pub fn Log(comptime PacketsStruct: type) type {
             return self;
         }
 
+        // pub fn logPlayer(self: *Self) void {}
+
         pub fn initFromFile(filename: []const u8, data: *PacketsStruct) !Self {
             var self = Self{
                 .file = try std.fs.cwd().openFile(filename, .{ .mode = .read_only }),
                 .header = undefined,
                 .data = data,
-                .currentTime = 0, //FIXME
+                .current_time = undefined,
+                .start_time = undefined,
+                .end_time = undefined,
             };
 
             self.reader = std.io.bufferedReader(self.file.reader());
@@ -120,12 +130,19 @@ pub fn Log(comptime PacketsStruct: type) type {
                 }
             }
 
+            self.start_time = self.header.start_time;
+            self.current_time = self.start_time;
+
+            self.end_time = self.header.end_time;
+
             std.debug.print("Field Corrections: {any}\n", .{self.fieldCorrections});
 
             std.debug.print("loaded file: {s}\n", .{filename});
 
             return self;
         }
+
+        pub fn getHeader(index)
 
         pub fn logPacket(self: *Self, header: tm.Header, data: tm.Data) !void {
             // std.debug.print("huh?\n", .{});
@@ -152,23 +169,48 @@ pub fn Log(comptime PacketsStruct: type) type {
         pub fn findBlock(self: *Self, micros: i64) i32 {
             const file_len = self.file.getEndPos() catch unreachable;
             const blocks = file_len / self.header.block_size;
-            var seek_block = blocks / 2;
-            var search_space_left = blocks / 2;
+            var blocks_left = blocks + 1;
+            var seek_block = blocks_left / 2;
+            // var current_block = seek_block;
             while (true) {
                 const seek_pos = seek_block * self.header.block_size;
                 self.file.seekTo(seek_pos) catch unreachable;
                 const header = self.file.reader().readStruct(BlockHeader) catch unreachable;
-                if (header.timestamp > micros) {}
 
                 std.debug.print("fileSize: {}, seek_pos: {}, blocks: {}, file_pos: {},   \t header: {}, micros: {}\n", .{
                     file_len,
                     seek_pos,
-                    blocks,
+                    blocks_left,
                     self.file.getPos() catch unreachable,
                     header,
                     micros,
                 });
-                break;
+
+                std.debug.print("blocks_left: {}, seek_block: {},\n ", .{
+                    blocks_left,
+                    seek_block,
+                });
+
+                if (header.timestamp < micros) {
+                    if (seek_block == blocks) {
+                        return @intCast(seek_block);
+                    }
+
+                    self.file.seekTo(seek_pos + self.header.block_size) catch unreachable;
+                    const next_header = self.file.reader().readStruct(BlockHeader) catch unreachable;
+
+                    if (next_header.timestamp >= micros) {
+                        return @intCast(seek_block);
+                    }
+                    blocks_left = blocks_left - (blocks_left / 2);
+                    seek_block += blocks_left / 2;
+                } else {
+                    if (seek_block == 0) {
+                        return @intCast(seek_block);
+                    }
+                    blocks_left = blocks_left / 2;
+                    seek_block -= (blocks_left - blocks_left / 2);
+                }
             }
             return 0;
         }
@@ -206,6 +248,9 @@ pub fn Log(comptime PacketsStruct: type) type {
         }
 
         pub fn close(self: *Self) void {
+            self.header.end_time = self.current_time;
+            self.file.seekTo(0);
+            _ = try self.writer.writer().write(&@as([packedSize(Header)]u8, @bitCast(header)));
             self.file.close();
         }
     };
