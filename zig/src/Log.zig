@@ -230,7 +230,7 @@ pub fn Log(comptime PacketsStruct: type) type {
 
             const block_header: BlockHeader = .{
                 .timestamp = std.time.microTimestamp(),
-                .next_header = @intCast((block_index * self.header.block_size) + self.header.block_header_size + block_overflow),
+                .next_header = @intCast(self.header.block_header_size + block_overflow),
             };
 
             try self.writer.writer().writeStruct(block_header);
