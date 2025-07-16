@@ -69,7 +69,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
                     self.next_packet = current_id;
                     break;
                 }
-                // self.log.logPacket(.{ .id = current_id }, packet.*) catch unreachable;
+                self.log.logPacket(.{ .id = current_id }, packet.*) catch unreachable;
 
                 packet.queued = false;
                 packet.locked = false;
@@ -94,7 +94,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
                     std.debug.print("Error?? {}\n", .{e});
                 };
 
-                // self.log.logPacket(header, packet.*) catch unreachable;
+                self.log.logPacket(header, packet.*) catch unreachable;
 
                 packet.received = true;
             }
