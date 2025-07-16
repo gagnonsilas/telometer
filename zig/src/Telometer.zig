@@ -19,7 +19,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
     return struct {
         const Self = @This();
         const count: usize = @typeInfo(PacketStruct).Struct.fields.len;
-        const log_header: log.Header = log.Header.init(12, InstanceStruct);
+        const log_header: log.Header = log.Header.init(12, InstanceStruct, 1, 0);
         pub const Logger = log.Log(InstanceStruct);
         backend: Backend,
         next_packet: u16 = 0,
@@ -69,7 +69,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
                     self.next_packet = current_id;
                     break;
                 }
-                self.log.logPacket(.{ .id = current_id }, packet.*) catch unreachable;
+                // self.log.logPacket(.{ .id = current_id }, packet.*) catch unreachable;
 
                 packet.queued = false;
                 packet.locked = false;
@@ -84,13 +84,17 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
                 var packet = &self.packet_struct[header.id];
 
                 if (packet.locked) {
-                    self.backend.read(null, packet.size) catch {};
+                    self.backend.read(null, packet.size) catch |e| {
+                        std.debug.print("mega error?? {}\n", .{e});
+                    };
                     continue;
                 }
 
-                self.backend.read(@as([*]u8, @ptrCast(packet.pointer)), packet.size) catch {};
+                self.backend.read(@as([*]u8, @ptrCast(packet.pointer)), packet.size) catch |e| {
+                    std.debug.print("Error?? {}\n", .{e});
+                };
 
-                self.log.logPacket(header, packet.*) catch unreachable;
+                // self.log.logPacket(header, packet.*) catch unreachable;
 
                 packet.received = true;
             }

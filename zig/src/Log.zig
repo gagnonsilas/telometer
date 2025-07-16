@@ -24,7 +24,7 @@ pub const Header = packed struct {
         return .{
             .git_hash = 1,
             .packet_header_hash = packet_header_hash,
-            .block_size = 256,
+            .block_size = 4096,
             .data_size = @sizeOf(PacketTypes),
             .packet_count = @typeInfo(PacketTypes).Struct.fields.len,
             .block_header_size = 2 + @sizeOf(PacketTypes),
@@ -106,8 +106,6 @@ pub fn Log(comptime PacketsStruct: type) type {
                 .header = undefined,
                 .data = data,
                 .current_time = undefined,
-                .start_time = undefined,
-                .end_time = undefined,
             };
 
             self.reader = std.io.bufferedReader(self.file.reader());
@@ -130,11 +128,6 @@ pub fn Log(comptime PacketsStruct: type) type {
                 }
             }
 
-            self.start_time = self.header.start_time;
-            self.current_time = self.start_time;
-
-            self.end_time = self.header.end_time;
-
             std.debug.print("Field Corrections: {any}\n", .{self.fieldCorrections});
 
             std.debug.print("loaded file: {s}\n", .{filename});
@@ -142,7 +135,7 @@ pub fn Log(comptime PacketsStruct: type) type {
             return self;
         }
 
-        pub fn getHeader(index)
+        // pub fn getHeader(index)
 
         pub fn logPacket(self: *Self, header: tm.Header, data: tm.Data) !void {
             // std.debug.print("huh?\n", .{});
@@ -250,7 +243,7 @@ pub fn Log(comptime PacketsStruct: type) type {
         pub fn close(self: *Self) void {
             self.header.end_time = self.current_time;
             self.file.seekTo(0);
-            _ = try self.writer.writer().write(&@as([packedSize(Header)]u8, @bitCast(header)));
+            _ = try self.writer.writer().write(&@as([packedSize(Header)]u8, @bitCast(self.header)));
             self.file.close();
         }
     };
