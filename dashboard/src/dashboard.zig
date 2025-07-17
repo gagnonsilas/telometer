@@ -65,23 +65,60 @@ pub fn openFile(out_path: []u8) void {
 
 var log_path: [256]u8 = undefined;
 
-pub fn loadLogger(instance: anytype) ?@TypeOf(instance).Logger {
-    defer c.igEnd();
-    if (c.igBegin("Load Log", null, 0)) {
-        _ = c.igInputText("Log File", &log_path, 256, c.ImGuiInputTextFlags_None, null, null);
-        if (c.igButton("OPEN", .{})) {
-            _ = (std.Thread.spawn(.{}, openFile, .{&log_path}) catch unreachable).detach();
-        }
-        c.igSameLine(0, 8);
-        if (c.igButton("LOAD", .{})) {
-            std.debug.print(" what2?? \n", .{});
-            return @TypeOf(instance).Logger.initFromFile(log_path[0..std.mem.len(@as([*c]u8, @ptrCast(&log_path)))], instance.data) catch |e| {
-                std.debug.print("Error: {}\n", .{e});
-                return null;
+pub fn LogInterface(comptime Logger: type) type {
+    return struct {
+        const Self = @This();
+        instance_logger: *Logger,
+        log_file: ?Logger,
+
+        pub fn init(instance_logger: *Logger) Self {
+            return .{
+                .instance_logger = instance_logger,
+                .log_file = undefined,
             };
         }
-    }
-    return null;
+
+        pub fn update(self: *Self) void {
+            defer c.igEnd();
+            if (c.igBegin("Log File", null, 0)) {
+                _ = c.igInputText("Log File", &log_path, 256, c.ImGuiInputTextFlags_None, null, null);
+                if (c.igButton("OPEN", .{})) {
+                    _ = (std.Thread.spawn(.{}, openFile, .{&log_path}) catch unreachable).detach();
+                }
+                c.igSameLine(0, 8);
+                if (c.igButton("LOAD", .{})) {
+                    std.debug.print(" what2?? \n", .{});
+                    self.log_file.?.close();
+                    self.log_file = Logger.initFromFile(log_path[0..std.mem.len(@as([*c]u8, @ptrCast(&log_path)))]) catch unreachable;
+                }
+
+                // const current_logger: *Logger = &(self.log_file orelse self.instance_logger.*);
+                const current_logger = self.instance_logger;
+
+                if (c.ImPlot_BeginPlot(
+                    "log",
+                    .{ .x = -1, .y = 100 },
+                    c.ImPlotFlags_NoFrame | c.ImPlotFlags_NoLegend | c.ImPlotFlags_CanvasOnly,
+                    // c.ImPlotFlags_NoFrame,
+                )) {
+                    c.ImPlot_SetupAxis(c.ImAxis_Y1, "", c.ImPlotAxisFlags_NoDecorations);
+                    c.ImPlot_SetupAxis(c.ImAxis_X1, "", c.ImPlotFlags_None);
+                    // c.ImPlot_SetupAxisLimits(
+                    //     c.ImAxis_X1,
+                    //     @floatFromInt(current_logger.header.start_time),
+                    //     @floatFromInt(current_logger.header.end_time),
+                    //     c.ImPlotCond_Always,
+                    // );
+                    std.debug.print("start: {}, end: {}\n", .{
+                        (current_logger.header.start_time),
+                        (current_logger.header.end_time),
+                    });
+
+                    c.ImPlot_EndPlot();
+                }
+            }
+        }
+    };
 }
 
 pub const Dashboard = struct {

@@ -54,8 +54,8 @@ pub fn Log(comptime PacketsStruct: type) type {
         const Self = @This();
         file: std.fs.File,
         header: Header,
-        data: *PacketsStruct,
-        log_data: PacketsStruct = undefined,
+        new_data: *PacketsStruct,
+        data: PacketsStruct = undefined,
         fieldCorrections: [numFields]?FieldCorrection = [1]?FieldCorrection{null} ** numFields,
         reader: std.io.BufferedReader(4096, std.fs.File.Reader) = undefined,
         writer: std.io.BufferedWriter(4096, std.fs.File.Writer) = undefined,
@@ -69,7 +69,7 @@ pub fn Log(comptime PacketsStruct: type) type {
             var self = Self{
                 .file = try std.fs.cwd().createFile("log/test.tl", .{ .read = true }),
                 .header = header,
-                .data = data,
+                .new_data = data,
                 .current_time = std.time.microTimestamp(),
             };
 
@@ -100,11 +100,11 @@ pub fn Log(comptime PacketsStruct: type) type {
 
         // pub fn logPlayer(self: *Self) void {}
 
-        pub fn initFromFile(filename: []const u8, data: *PacketsStruct) !Self {
+        pub fn initFromFile(filename: []const u8) !Self {
             var self = Self{
                 .file = try std.fs.cwd().openFile(filename, .{ .mode = .read_only }),
                 .header = undefined,
-                .data = data,
+                .new_data = undefined,
                 .current_time = undefined,
             };
 
@@ -135,18 +135,18 @@ pub fn Log(comptime PacketsStruct: type) type {
             return self;
         }
 
-        // pub fn getHeader(index)
-
         pub fn logPacket(self: *Self, header: tm.Header, data: tm.Data) !void {
-            // std.debug.print("huh?\n", .{});
-
             const pos = try self.file.getPos();
 
             if (self.writer.end != 0) {
                 try self.writer.flush();
             }
 
-            try self.writer.writer().writeInt(i64, std.time.microTimestamp(), std.builtin.Endian.little);
+            const now = std.time.microTimestamp();
+
+            std.debug.print("what the fuck? {} \n", .{self.header.end_time});
+            self.header.end_time = now;
+            try self.writer.writer().writeInt(i64, now, std.builtin.Endian.little);
             try self.writer.writer().writeStruct(header);
             try self.writer.writer().writeAll(@as([*]u8, @ptrCast(data.pointer))[0..data.size]);
 
@@ -234,16 +234,20 @@ pub fn Log(comptime PacketsStruct: type) type {
             };
 
             try self.writer.writer().writeStruct(block_header);
-            try self.writer.writer().writeStruct(self.data.*);
+            try self.writer.writer().writeStruct(self.new_data.*);
 
             self.writer.end = block_header_end + block_overflow;
             std.debug.print("WOOOOOOOO!!!! block_index:{}, block_overflow:{}\n", .{ block_index, block_overflow });
         }
 
-        pub fn close(self: *Self) void {
+        pub fn endLog(self: *Self) !void {
             self.header.end_time = self.current_time;
-            self.file.seekTo(0);
+            try self.file.seekTo(0);
             _ = try self.writer.writer().write(&@as([packedSize(Header)]u8, @bitCast(self.header)));
+            self.close();
+        }
+
+        pub fn close(self: *Self) void {
             self.file.close();
         }
     };

@@ -3,18 +3,13 @@
 #include "Telometer.h"
 
 #include <stdbool.h>
-#define PACKETS(P, N)                                                          \
-  P(N, enabled, bool)                                                          \
-  P(N, state, uint32_t)                                                        \
-  P(N, controlmode, uint16_t)                                                  \
-  P(N, time, double)
-
-
-typedef struct newStruct {
-  float bob;
-  uint32_t color;
-} newStruct;
-
+#define PACKETS(P, N)         \
+    P(N, speed, int16_t)      \
+    P(N, feed, int16_t)       \
+    P(N, motorEnable, bool)   \
+    P(N, pumpEnable, bool)    \
+    P(N, stepperEnable, bool) \
+    P(N, spindleMeasured, int16_t) \
 
 TELOMETER_INSTANCE(Telemetry, PACKETS)
 

@@ -46,9 +46,8 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
             return self;
         }
 
-        pub fn loadNewLog(self: *Self, logger: log.Log(InstanceStruct)) void {
-            self.log.close();
-            self.log = logger;
+        pub fn close(self: *Self) void {
+            self.log.endLog() catch unreachable;
         }
 
         pub fn update(self: *Self) void {

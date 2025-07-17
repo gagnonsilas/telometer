@@ -50,12 +50,14 @@ pub fn main() !void {
     // );
     // _ = logger;
     //
-    var extra_logger: TelometerInstance.Logger = undefined;
     instance = try TelometerInstance.init(
         std.heap.c_allocator,
         backend,
         &packets,
     );
+    defer instance.close();
+
+    var log_interface = dash.LogInterface(TelometerInstance.Logger).init(&instance.log);
 
     var dashboard = dash.Dashboard.init() catch |e| return e;
     defer dashboard.end();
@@ -91,22 +93,14 @@ pub fn main() !void {
                 running = false;
             }
             // _ = c.igInputText("File:", out_path, 0, 0, 0, 0);A
-            if (c.igButton("SEEKKKK", .{})) {
-                // extra_logger.seekToTime(std.time.microTimestamp() - @as(i64, @intFromFloat(1e6)));
-                // extra_logger.seekToTime(1751159954600000);
-                extra_logger.seekToTime(0);
-            }
         }
 
         c.igEnd();
 
         instance.update();
+        log_interface.update();
         dash.list(instance);
         plot.update();
-        if (dash.loadLogger(instance)) |logger| {
-            std.debug.print(" what?? \n", .{});
-            extra_logger = logger;
-        }
 
         dashboard.render(clear_color);
     }
