@@ -32,6 +32,7 @@
 
           buildInputs = with pkgs; [
             SDL2
+            dbus.dev
             xorg.libX11
             pkg-config
             zlib
@@ -87,6 +88,7 @@
 
             buildInputs = with pkgs; [
               SDL2
+              dbus.dev
               xorg.libX11
               pkg-config
               zlib
@@ -111,11 +113,17 @@
           name = "telometer";
           packages = with pkgs; [
             SDL2
+            dbus.dev
             pkg-config
             # source
             zig
             zls
             compiledb
+            gtk3
+            atkmm
+            glib
+            zenity
+            gdb
           ];
 
           shellHook = ''

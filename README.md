@@ -9,3 +9,23 @@ It is mostly currently being used for my personal projects but I am slowly worki
 - UDP
 - CAN
 - UART
+
+
+## Future Features
+- Log
+  - version hashing
+  - UI
+  - Log replay
+  - multigraph
+- Backend timestamp protocol
+  - Log talking to backend to get timestamp
+- Data Array
+- Math
+- Graph Improvements
+  - Deleting log values
+  - Retroactive Logging
+  - Cursors
+  - Measurement
+  - 
+- Parametric Drawings
+- 

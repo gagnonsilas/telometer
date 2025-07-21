@@ -8,10 +8,15 @@ pub const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
 
+pub const nfd = @cImport({
+    @cInclude("nfd.h");
+});
+
 const mat = @import("mat.zig");
 const math = std.math;
 
 const tm = @import("telometer");
+const log = tm.log;
 const Backend = @import("backend.zig").Backend;
 
 const telemetry = @cImport({
@@ -23,6 +28,197 @@ const stdout = std.io.getStdOut().writer();
 pub fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error {}: {s}\n", .{ err, desc });
 }
+
+pub fn openFile(out_path: []u8) void {
+    _ = nfd.NFD_Init();
+
+    const filters = [1]nfd.nfdu8filteritem_t{.{ .name = "Telometer Log", .spec = "tl" }};
+    const args: nfd.nfdopendialogu8args_t = .{
+        .filterList = @ptrCast(&filters[0]),
+        .filterCount = 1,
+    };
+
+    var path: [*c]u8 = null;
+
+    const result: nfd.nfdresult_t = nfd.NFD_OpenDialogU8_With(&path, &args);
+
+    if (result != nfd.NFD_OKAY) {
+        if (nfd.NFD_GetError()) |ptr| {
+            std.debug.print("{s}\n", .{
+                std.mem.sliceTo(ptr, 0),
+            });
+        }
+        return;
+        // return error.NfdError;
+    }
+
+    const len = std.mem.len(path);
+    if (len > out_path.len) {
+        std.debug.print("file path too long: {s}\n", .{path});
+        return;
+    } else {
+        @memcpy(out_path[0 .. len + 1], path[0 .. len + 1]);
+    }
+
+    nfd.NFD_FreePathU8(path);
+}
+
+var log_path: [256]u8 = undefined;
+
+pub fn LogInterface(comptime Logger: type) type {
+    return struct {
+        const Self = @This();
+        instance_logger: *Logger,
+        log_file: ?Logger,
+
+        pub fn init(instance_logger: *Logger) Self {
+            return .{
+                .instance_logger = instance_logger,
+                .log_file = undefined,
+            };
+        }
+
+        pub fn update(self: *Self) void {
+            defer c.igEnd();
+            if (c.igBegin("Log File", null, 0)) {
+                _ = c.igInputText("Log File", &log_path, 256, c.ImGuiInputTextFlags_None, null, null);
+                if (c.igButton("OPEN", .{})) {
+                    _ = (std.Thread.spawn(.{}, openFile, .{&log_path}) catch unreachable).detach();
+                }
+                c.igSameLine(0, 8);
+                if (c.igButton("LOAD", .{})) {
+                    std.debug.print(" what2?? \n", .{});
+                    self.log_file.?.close();
+                    self.log_file = Logger.initFromFile(log_path[0..std.mem.len(@as([*c]u8, @ptrCast(&log_path)))]) catch unreachable;
+                }
+
+                // const current_logger: *Logger = &(self.log_file orelse self.instance_logger.*);
+                const current_logger = self.instance_logger;
+
+                if (c.ImPlot_BeginPlot(
+                    "log",
+                    .{ .x = -1, .y = 100 },
+                    c.ImPlotFlags_NoFrame | c.ImPlotFlags_NoLegend | c.ImPlotFlags_CanvasOnly,
+                    // c.ImPlotFlags_NoFrame,
+                )) {
+                    c.ImPlot_SetupAxis(c.ImAxis_Y1, "", c.ImPlotAxisFlags_NoDecorations);
+                    c.ImPlot_SetupAxis(c.ImAxis_X1, "", c.ImPlotFlags_None);
+                    // c.ImPlot_SetupAxisLimits(
+                    //     c.ImAxis_X1,
+                    //     @floatFromInt(current_logger.header.start_time),
+                    //     @floatFromInt(current_logger.header.end_time),
+                    //     c.ImPlotCond_Always,
+                    // );
+                    std.debug.print("start: {}, end: {}\n", .{
+                        (current_logger.header.start_time),
+                        (current_logger.header.end_time),
+                    });
+
+                    c.ImPlot_EndPlot();
+                }
+            }
+        }
+    };
+}
+
+pub const Dashboard = struct {
+    const Self = @This();
+    window: *c.SDL_Window,
+    gl_context: c.SDL_GLContext,
+    ctx: ?*c.ImGuiContext,
+    io: [*c]c.ImGuiIO,
+    context: [*c]c.ImPlotContext,
+
+    pub fn init() !Self {
+        var self: Self = .{
+            .window = undefined,
+            .gl_context = undefined,
+            .ctx = undefined,
+            .io = undefined,
+            .context = undefined,
+        };
+
+        if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
+            return error.GLFWInitFailed;
+        }
+
+        if (0 != c.SDL_GL_SetAttribute(c.SDL_GL_CONTEXT_MAJOR_VERSION, 3)) {
+            return error.FailedToSetGLVersion;
+        }
+        if (0 != c.SDL_GL_SetAttribute(c.SDL_GL_CONTEXT_MINOR_VERSION, 3)) {
+            return error.FailedToSetGLVersion;
+        }
+        if (0 != c.SDL_GL_SetAttribute(c.SDL_GL_CONTEXT_PROFILE_MASK, c.SDL_GL_CONTEXT_PROFILE_CORE)) {
+            return error.FailedToSetGLVersion;
+        }
+
+        self.window = c.SDL_CreateWindow(
+            "Telometer Dashboard",
+            c.SDL_WINDOWPOS_CENTERED,
+            c.SDL_WINDOWPOS_CENTERED,
+            900,
+            900,
+            c.SDL_WINDOW_OPENGL | c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_ALLOW_HIGHDPI,
+        ) orelse return error.GLFWCreateWindowFailed;
+
+        self.gl_context = c.SDL_GL_CreateContext(self.window);
+        if (0 != c.SDL_GL_MakeCurrent(self.window, self.gl_context))
+            return error.GLMakeCurrentFailed;
+
+        if (0 != c.SDL_GL_SetSwapInterval(1))
+            return error.GLMakeCurrentFailed;
+
+        if (c.gladLoadGLLoader(c.SDL_GL_GetProcAddress) == 0) {
+            return error.FailedToLoadOpenGL;
+        }
+
+        self.ctx = c.igCreateContext(null);
+
+        self.io = c.igGetIO();
+        self.io.*.ConfigFlags |= c.ImGuiConfigFlags_NavEnableKeyboard;
+        self.io.*.ConfigFlags |= c.ImGuiConfigFlags_DockingEnable;
+
+        // c.igStyleColorsDark(null);
+
+        _ = c.ImGui_ImplSDL2_InitForOpenGL(self.window, self.gl_context);
+
+        _ = c.ImGui_ImplOpenGL3_Init("#version 410");
+
+        self.context = c.ImPlot_CreateContext() orelse @panic("Kill yourself");
+        return self;
+    }
+
+    pub fn init_frame(_: *Self) void {
+        c.ImGui_ImplOpenGL3_NewFrame();
+        c.ImGui_ImplSDL2_NewFrame();
+        c.igNewFrame();
+
+        _ = c.igDockSpaceOverViewport(0, null, 0, c.ImGuiWindowClass_ImGuiWindowClass());
+    }
+
+    pub fn render(self: *Self, clear_color: c.ImVec4) void {
+        c.igRender();
+        var width: c_int = undefined;
+        var height: c_int = undefined;
+        c.SDL_GetWindowSize(self.window, &width, &height);
+        c.glViewport(0, 0, width, height);
+        c.glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+        c.glClear(c.GL_COLOR_BUFFER_BIT);
+        c.ImGui_ImplOpenGL3_RenderDrawData(c.igGetDrawData());
+
+        c.SDL_GL_SwapWindow(self.window);
+    }
+
+    pub fn end(self: *Self) void {
+        c.ImPlot_DestroyContext(self.context);
+        c.ImGui_ImplOpenGL3_Shutdown();
+        c.ImGui_ImplSDL2_Shutdown();
+        c.igDestroyContext(self.ctx);
+        c.SDL_GL_DeleteContext(self.gl_context);
+        c.SDL_DestroyWindow(self.window);
+        c.SDL_Quit();
+    }
+};
 
 pub fn theme_fluent() void {
     // var io = c.igGetIO();
@@ -217,7 +413,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
 var drag_drop_payload: PlotData = undefined;
 var my_bool: bool = false;
 
-pub fn list(instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets)) void {
+pub fn list(instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes)) void {
     if (c.igBegin("data", null, 0)) {}
 
     inline for (@typeInfo(telemetry.TelemetryTypes).Struct.fields, 0..) |packetType, i| {
@@ -343,6 +539,17 @@ pub const Plot = struct {
             .data_pointers2 = std.ArrayList(PlotData).init(allocator),
             .allocator = allocator,
         };
+    }
+
+    pub fn cleanup(self: *Self) void {
+        for (self.data_pointers.items) |pointer| {
+            pointer.data.deinit();
+        }
+        self.data_pointers.deinit();
+        for (self.data_pointers2.items) |pointer| {
+            pointer.data.deinit();
+        }
+        self.data_pointers2.deinit();
     }
 
     pub fn update(self: *Self) void {

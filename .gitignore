@@ -15,3 +15,5 @@ telometer
 
 .direnv
 .envrc
+
+dashboard/log/

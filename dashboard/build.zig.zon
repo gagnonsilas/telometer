@@ -46,6 +46,14 @@
             .url = "git+https://github.com/ZigEmbeddedGroup/serial#2db309014d2ac9865cc8d7753664829c86588fca",
             .hash = "12205583d4fc231329bc966d65f9fd5dd4d6699e8d90fe0e662fd123fe496b064027",
         },
+        .nfd = .{
+            .url = "git+https://github.com/fabioarnold/nfd-zig#ad81729d33da30d5f4fd23718debec48245121ca",
+            .hash = "1220a679380847513262c8c5c474d4a415f9ecc4921c8c6aefbdbdce66cf2aa19ceb",
+        },
+        .@"nativefiledialog-extended" = .{
+            .url = "git+https://github.com/allyourcodebase/nativefiledialog-extended.git?ref=1.2.1#9cd327447daca85779705350606b6bd4dd330a4f",
+            .hash = "12207c1a4d33b3d3a3a9247844e21cc0389b4f62423a645ec94fb129c434cda60cda",
+        },
     },
     .paths = .{
         "build.zig",
