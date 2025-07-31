@@ -26,7 +26,7 @@ pub const Header = packed struct {
             .packet_header_hash = packet_header_hash,
             .block_size = 4096,
             .data_size = @sizeOf(PacketTypes),
-            .packet_count = @typeInfo(PacketTypes).Struct.fields.len,
+            .packet_count = @typeInfo(PacketTypes).@"struct".fields.len,
             .block_header_size = 2 + @sizeOf(PacketTypes),
             .uid = uid,
             .start_time = start_time,
@@ -46,7 +46,7 @@ pub fn Log(comptime PacketsStruct: type) type {
     return struct {
         const Field = packed struct { id: u16, size: u16 };
         const FieldCorrection = struct { actualSize: usize };
-        const numFields = @typeInfo(PacketsStruct).Struct.fields.len;
+        const numFields = @typeInfo(PacketsStruct).@"struct".fields.len;
         const BlockHeader = packed struct {
             timestamp: i64,
             next_header: u16,
@@ -80,7 +80,7 @@ pub fn Log(comptime PacketsStruct: type) type {
 
             _ = try self.writer.writer().write(&@as([packedSize(Header)]u8, @bitCast(header)));
 
-            inline for (@typeInfo(PacketsStruct).Struct.fields, 0..) |packet, i| {
+            inline for (@typeInfo(PacketsStruct).@"struct".fields, 0..) |packet, i| {
                 try self.writer.writer().writeStruct(@as(
                     packed struct {
                         id: u16,
@@ -115,7 +115,7 @@ pub fn Log(comptime PacketsStruct: type) type {
             try self.file.reader().readNoEof(&buf);
             self.header = @bitCast(buf);
 
-            inline for (@typeInfo(PacketsStruct).Struct.fields, 0..) |packet, i| {
+            inline for (@typeInfo(PacketsStruct).@"struct".fields, 0..) |packet, i| {
                 const f = try self.file.reader().readStruct(Field);
                 if (f.id != i) return error.BadHeader;
                 if (f.size != @sizeOf(packet.type)) {

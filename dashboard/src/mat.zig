@@ -181,20 +181,6 @@ pub fn ortho_matrix(T: type, left: T, right: T, bottom: T, top: T, start: T, end
     });
 }
 
-// m4f lookAtMatrix(v3f dir, v3f up)
-// {
-//     v3f right = normalize(cross(up, dir));
-//     v3f actual_up = normalize(cross(dir, right));
-//     v3f dir_norm = normalize(dir);
-
-//     return {
-//         right.x, actual_up.x, dir_norm.x, 0,
-//         right.y, actual_up.y, dir_norm.y, 0,
-//         right.z, actual_up.z, dir_norm.z, 0,
-//         0,       0,		   0,	      1
-//     };
-// }
-
 pub fn translation_matrix(T: type, translation: Vec(3, T)) Mat(4, 4, T) {
     return Mat(4, 4, T).new(.{
         1, 0, 0, translation.d[0], //

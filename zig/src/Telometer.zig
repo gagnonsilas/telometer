@@ -18,7 +18,7 @@ pub const Header = telometer.TelometerHeader;
 pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, comptime InstanceStruct: type) type {
     return struct {
         const Self = @This();
-        const count: usize = @typeInfo(PacketStruct).Struct.fields.len;
+        const count: usize = @typeInfo(PacketStruct).@"struct".fields.len;
         const log_header: log.Header = log.Header.init(12, InstanceStruct, 1, 0);
         pub const Logger = log.Log(InstanceStruct);
         backend: Backend,
@@ -36,7 +36,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
                 .log = undefined,
             };
 
-            inline for (@typeInfo(PacketStruct).Struct.fields) |packet| {
+            inline for (@typeInfo(PacketStruct).@"struct".fields) |packet| {
                 @field(packet_struct, packet.name).pointer = @ptrCast(&(@field(self.data.*, packet.name)));
             }
 

@@ -6,7 +6,9 @@
     //
     // It is redundant to include "zig" in this name because it is already
     // within the Zig package namespace.
-    .name = "telometer",
+    .name = .telometer,
+
+    .fingerprint = 0xfeda480554f3fc10,
 
     // This is a [Semantic Version](https://semver.org/).
     // In a future version of Zig it will be used for package deduplication.
@@ -51,8 +53,8 @@
             .hash = "1220a679380847513262c8c5c474d4a415f9ecc4921c8c6aefbdbdce66cf2aa19ceb",
         },
         .@"nativefiledialog-extended" = .{
-            .url = "git+https://github.com/allyourcodebase/nativefiledialog-extended.git?ref=1.2.1#9cd327447daca85779705350606b6bd4dd330a4f",
-            .hash = "12207c1a4d33b3d3a3a9247844e21cc0389b4f62423a645ec94fb129c434cda60cda",
+            .url = "git+https://github.com/allyourcodebase/nativefiledialog-extended.git#1.2.1-2",
+            .hash = "12203bd355edca63dd49c5a6acb43966ec3dc99626fdbc69ec39106ce12ded5a1d36",
         },
     },
     .paths = .{

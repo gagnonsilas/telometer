@@ -74,7 +74,7 @@ pub fn LogInterface(comptime Logger: type) type {
         pub fn init(instance_logger: *Logger) Self {
             return .{
                 .instance_logger = instance_logger,
-                .log_file = undefined,
+                .log_file = null,
             };
         }
 
@@ -88,12 +88,14 @@ pub fn LogInterface(comptime Logger: type) type {
                 c.igSameLine(0, 8);
                 if (c.igButton("LOAD", .{})) {
                     std.debug.print(" what2?? \n", .{});
-                    self.log_file.?.close();
+                    if (self.log_file) |*log_file| {
+                        log_file.close();
+                    }
                     self.log_file = Logger.initFromFile(log_path[0..std.mem.len(@as([*c]u8, @ptrCast(&log_path)))]) catch unreachable;
                 }
 
                 // const current_logger: *Logger = &(self.log_file orelse self.instance_logger.*);
-                const current_logger = self.instance_logger;
+                // const current_logger = self.instance_logger;
 
                 if (c.ImPlot_BeginPlot(
                     "log",
@@ -109,10 +111,10 @@ pub fn LogInterface(comptime Logger: type) type {
                     //     @floatFromInt(current_logger.header.end_time),
                     //     c.ImPlotCond_Always,
                     // );
-                    std.debug.print("start: {}, end: {}\n", .{
-                        (current_logger.header.start_time),
-                        (current_logger.header.end_time),
-                    });
+                    // std.debug.print("start: {}, end: {}\n", .{
+                    //     (current_logger.header.start_time),
+                    //     (current_logger.header.end_time),
+                    // });
 
                     c.ImPlot_EndPlot();
                 }
@@ -335,7 +337,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
     const info = @typeInfo(ValueType);
     const long_name = parent_name ++ name;
     switch (info) {
-        .Struct => |struct_type| {
+        .@"struct" => |struct_type| {
             // std.debug.print("struct {s}\n", .{thing.fields});
 
             // c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x * 2);
@@ -350,7 +352,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
                 c.igTreePop();
             }
         },
-        .Array => |array_type| {
+        .array => |array_type| {
             // std.debug.print("array type: {}", .{array_type});
             if (c.igTreeNode_Str(name)) {
                 c.igPushItemWidth(c.igCalcItemWidth() * 0.8);
@@ -361,13 +363,13 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
                 c.igTreePop();
             }
         },
-        .Int => {
+        .int => {
             if (displayInt("##" ++ name, data, ValueType)) packet.queued = true;
         },
-        .Float => {
+        .float => {
             if (displayFloat("##" ++ name, data, ValueType)) packet.queued = true;
         },
-        .Bool => {
+        .bool => {
             const ptr: *bool = @ptrCast(@alignCast(data));
             const val: f32 = @floatFromInt(@as(*u8, @ptrCast(@alignCast(data))).*);
             if (c.igColorButton(
@@ -391,7 +393,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
     }
 
     switch (info) {
-        .Int, .Float, .Bool => {
+        .int, .float, .bool => {
             c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
             _ = c.igSelectable_Bool(name, false, 0, c.ImVec2{ .x = 0, .y = 0 });
 
@@ -416,7 +418,7 @@ var my_bool: bool = false;
 pub fn list(instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes)) void {
     if (c.igBegin("data", null, 0)) {}
 
-    inline for (@typeInfo(telemetry.TelemetryTypes).Struct.fields, 0..) |packetType, i| {
+    inline for (@typeInfo(telemetry.TelemetryTypes).@"struct".fields, 0..) |packetType, i| {
         const packet: *tm.Data = &instance.packet_struct[i];
 
         updatesDecay[i] *= 0.99;
@@ -507,15 +509,15 @@ pub const PlotValue = union(enum) {
     pub fn get_float(self: PlotValue) f64 {
         return switch (self) {
             inline else => |s| {
-                const info = @typeInfo(@typeInfo(@TypeOf(s)).Pointer.child);
+                const info = @typeInfo(@typeInfo(@TypeOf(s)).pointer.child);
                 switch (info) {
-                    .Float => {
+                    .float => {
                         return @floatCast(s.*);
                     },
-                    .Int => {
+                    .int => {
                         return @floatFromInt(s.*);
                     },
-                    .Bool => {
+                    .bool => {
                         return @floatFromInt(@intFromBool(s.*));
                     },
                     else => unreachable,

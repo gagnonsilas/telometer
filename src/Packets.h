@@ -42,32 +42,6 @@
   // P(N, WHEELSPEED_BL, TelemPacket)                                             \
   // P(N, DRIVER_HEARTRATE, TelemPacket)                                          \
   // P(N, PUMP_SPEED, TelemPacket)
-
-#define PACKET_TYPES(P, N)                                                     \
-  P(N, TelemPacket)                                                            \
-  P(N, BrakePacket)                                                            \
-  P(N, CountsInfo)                                                             \
-  P(N, BrakeCountsInfo)                                                        \
-  P(N, MsgInverterHS1TorqueFeedback)                                           \
-  P(N, MsgInverterHC1Demands)                                                  \
-  P(N, MsgVoltageResponse)                                                  \
-  P(N, MsgCarVoltageDistribution)\
-  P(N, MsgCarHeartbeat)                                                        \
-  P(N, MsgInverterHD1DebugCurrents)                                            \
-  P(N, PedalInfo)                                                              \
-  P(N, PedalFaultInfo)                                                         \
-  P(N, ThrottlePacket)                                                         \
-  P(N, uint32_t)                                                               \
-  P(N, int16_t)                                                                \
-  P(N, uint16_t)                                                               \
-  P(N, int32_t)                                                                \
-  P(N, uint64_t)                                                               \
-  P(N, int8_t)                                                                 \
-  P(N, bool)                                                                   \
-  P(N, newStruct)                                                              \
-  P(N, double)                                                                 \
-  P(N, float)
-
 // #define ID(namespace, id) (namespace << 8 | id)
 // #define ThrottleID 768
 
@@ -172,6 +146,6 @@ typedef struct __attribute__((__packed__)) MsgCarVoltageDistribution {
     uint16_t current;
 } MsgCarVoltageDistribution;
 
-TELOMETER_INSTANCE(Telemetry, PACKET_TYPES, PACKETS)
+TELOMETER_INSTANCE(Telemetry, PACKETS)
 
 extern struct TelemetryPackets packets;
