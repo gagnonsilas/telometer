@@ -135,18 +135,16 @@ pub fn Log(comptime PacketsStruct: type) type {
             return self;
         }
 
-        pub fn logPacket(self: *Self, header: tm.Header, data: tm.Data) !void {
+        pub fn logPacket(self: *Self, header: tm.Header, data: tm.Data, timestamp: i64) !void {
             const pos = try self.file.getPos();
 
             if (self.writer.end != 0) {
                 try self.writer.flush();
             }
 
-            const now = std.time.microTimestamp();
-
             std.debug.print("what the fuck? {} \n", .{self.header.end_time});
-            self.header.end_time = now;
-            try self.writer.writer().writeInt(i64, now, std.builtin.Endian.little);
+            self.header.end_time = timestamp;
+            try self.writer.writer().writeInt(i64, timestamp, std.builtin.Endian.little);
             try self.writer.writer().writeStruct(header);
             try self.writer.writer().writeAll(@as([*]u8, @ptrCast(data.pointer))[0..data.size]);
 

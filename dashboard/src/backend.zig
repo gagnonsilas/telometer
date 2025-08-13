@@ -31,6 +31,10 @@ const UDPBackend: type = struct {
         _ = size;
     }
 
+    pub fn timestamp() i64 {
+        return std.time.microTimestamp();
+    }
+
     pub fn getNextHeader(self: *Self) ?tm.Header {
         _ = self;
         return null;
