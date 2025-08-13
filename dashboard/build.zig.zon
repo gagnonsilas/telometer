@@ -52,10 +52,10 @@
             .url = "git+https://github.com/fabioarnold/nfd-zig#ad81729d33da30d5f4fd23718debec48245121ca",
             .hash = "1220a679380847513262c8c5c474d4a415f9ecc4921c8c6aefbdbdce66cf2aa19ceb",
         },
-        .@"nativefiledialog-extended" = .{
-            .url = "git+https://github.com/allyourcodebase/nativefiledialog-extended.git#1.2.1-2",
-            .hash = "12203bd355edca63dd49c5a6acb43966ec3dc99626fdbc69ec39106ce12ded5a1d36",
-        },
+        // .@"nativefiledialog-extended" = .{
+        //     .url = "git+https://github.com/allyourcodebase/nativefiledialog-extended.git#1.2.1-2",
+        //     .hash = "12203bd355edca63dd49c5a6acb43966ec3dc99626fdbc69ec39106ce12ded5a1d36",
+        // },
     },
     .paths = .{
         "build.zig",

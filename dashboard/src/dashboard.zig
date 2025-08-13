@@ -30,37 +30,39 @@ pub fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
 }
 
 pub fn openFile(out_path: []u8) void {
-    _ = nfd.NFD_Init();
+    // _ = nfd.NFD_Init();
 
-    const filters = [1]nfd.nfdu8filteritem_t{.{ .name = "Telometer Log", .spec = "tl" }};
-    const args: nfd.nfdopendialogu8args_t = .{
-        .filterList = @ptrCast(&filters[0]),
-        .filterCount = 1,
-    };
+    // const filters = [1]nfd.nfdu8filteritem_t{.{ .name = "Telometer Log", .spec = "tl" }};
+    // const args: nfd.nfdopendialogu8args_t = .{
+    //     .filterList = @ptrCast(&filters[0]),
+    //     .filterCount = 1,
+    // };
 
-    var path: [*c]u8 = null;
+    // var path: [*c]u8 = null;
 
-    const result: nfd.nfdresult_t = nfd.NFD_OpenDialogU8_With(&path, &args);
+    // const result: nfd.nfdresult_t = nfd.NFD_OpenDialogU8_With(&path, &args);
 
-    if (result != nfd.NFD_OKAY) {
-        if (nfd.NFD_GetError()) |ptr| {
-            std.debug.print("{s}\n", .{
-                std.mem.sliceTo(ptr, 0),
-            });
-        }
-        return;
-        // return error.NfdError;
-    }
+    // if (result != nfd.NFD_OKAY) {
+    //     if (nfd.NFD_GetError()) |ptr| {
+    //         std.debug.print("{s}\n", .{
+    //             std.mem.sliceTo(ptr, 0),
+    //         });
+    //     }
+    //     return;
+    //     // return error.NfdError;
+    // }
 
-    const len = std.mem.len(path);
-    if (len > out_path.len) {
-        std.debug.print("file path too long: {s}\n", .{path});
-        return;
-    } else {
-        @memcpy(out_path[0 .. len + 1], path[0 .. len + 1]);
-    }
+    // const len = std.mem.len(path);
+    // if (len > out_path.len) {
+    //     std.debug.print("file path too long: {s}\n", .{path});
+    //     return;
+    // } else {
+    //     @memcpy(out_path[0 .. len + 1], path[0 .. len + 1]);
+    // }
 
-    nfd.NFD_FreePathU8(path);
+    // nfd.NFD_FreePathU8(path);
+    //
+    _ = out_path;
 }
 
 var log_path: [256]u8 = undefined;
