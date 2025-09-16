@@ -25,7 +25,8 @@ const TelometerError = error{
 pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type, comptime IdMap: [@typeInfo(InstanceStruct).@"struct".fields.len]u32) type {
     return struct {
         const Self = @This();
-        const count: usize = @typeInfo(InstanceStruct).@"struct".fields.len;
+        pub const Struct = InstanceStruct;
+        pub const count: usize = @typeInfo(InstanceStruct).@"struct".fields.len;
         const log_header: log.Header = log.Header.init(12, InstanceStruct, 1, 0);
         pub const Logger = log.Log(InstanceStruct);
         backend: Backend,
@@ -49,7 +50,6 @@ pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type, 
                 data.queued = false;
                 data.locked = false;
                 data.received = false;
-                std.debug.print("data: {any}\n", .{data});
             }
 
             self.log = try log.Log(InstanceStruct).init(log_header, self.data);

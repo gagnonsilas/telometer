@@ -6,19 +6,20 @@
 #define PACKETS(P, N)                                                          \
   P(N, CarHeartBeat, MsgCarHeartbeat)                                          \
   P(N, Throttle, ThrottlePacket)                                               \
-  P(N, Pedal, PedalInfo)                                                       \
-  P(N, Brake, BrakePacket)                                                     \
-  P(N, inverterHS1, MsgInverterHS1TorqueFeedback)                              \
-  P(N, PedalCounts, CountsInfo)                                                \
-  P(N, BrakeCounts, BrakeCountsInfo)                                           \
-  P(N, inverterHC1, MsgInverterHC1Demands)                                     \
-  P(N, inverterHD1, MsgInverterHD1DebugCurrents)                               \
-  P(N, Voltage, MsgVoltageResponse)                                            \
-  P(N, MinMax, MsgCarVoltageDistribution)                                      \
-  P(N, AMS, TelemPacket)                                                       \
-  P(N, SusTravel, SusTravelCountsInfo)                                         \
-  P(N, Wheelspeed, WheelSpeedMeasurement)                                      \
-  P(N, inverterHS3, MsgInverterHS3TemperatureFeedback)
+
+  // P(N, Pedal, PedalInfo)                                                       \
+  // P(N, Brake, BrakePacket)                                                     \
+  // P(N, inverterHS1, MsgInverterHS1TorqueFeedback)                              \
+  // P(N, PedalCounts, CountsInfo)                                                \
+  // P(N, BrakeCounts, BrakeCountsInfo)                                           \
+  // P(N, inverterHC1, MsgInverterHC1Demands)                                     \
+  // P(N, inverterHD1, MsgInverterHD1DebugCurrents)                               \
+  // P(N, Voltage, MsgVoltageResponse)                                            \
+  // P(N, MinMax, MsgCarVoltageDistribution)                                      \
+  // P(N, AMS, TelemPacket)                                                       \
+  // P(N, SusTravel, SusTravelCountsInfo)                                         \
+  // P(N, Wheelspeed, WheelSpeedMeasurement)                                      \
+  // P(N, inverterHS3, MsgInverterHS3TemperatureFeedback)
 
 typedef struct __attribute__((__packed__)) MsgWheelSpeedMeasurement {
   uint8_t wheel_id;
@@ -122,7 +123,7 @@ enum CarStatus : uint8_t { OK = 0, NOT_OK, DRIVER_DECEASED, ON_FIRE };
 
 typedef struct __attribute__((__packed__)) MsgCarHeartbeat {
   uint32_t tick;
-  uint8_t status;
+  enum CarStatus status;
   bool rtd_status;
   uint8_t errno_;
   uint8_t caught;

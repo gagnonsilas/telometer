@@ -1,4 +1,5 @@
 const std = @import("std");
+pub const fsae = @import("fsae.zig");
 pub const c = @cImport({
     @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", {});
     @cInclude("cimgui.h");
@@ -44,7 +45,8 @@ const ids = [_]u32{
     (0x191AFF71 | 1 << 31),
 };
 var backend: Backend = undefined;
-const TelometerInstance = tm.TelometerInstance(Backend, telemetry.TelemetryTypes, ids);
+const TelometerInstance = tm.TelometerInstance(Backend, fsae.TelometerTypes, fsae.TelometerTypes.IDs);
+// const TelometerInstance = tm.TelometerInstance(Backend, fsae.TelometerTypes, fsae.TelometerTypes.IDs); :)
 var instance: TelometerInstance = undefined;
 
 var plot: dash.Plot = undefined;

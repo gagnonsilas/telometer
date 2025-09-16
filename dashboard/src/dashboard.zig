@@ -305,8 +305,6 @@ pub fn theme_fluent() void {
     style.ScrollbarSize = 16.0;
 }
 
-var updatesDecay: [telemetry.TelemetryPacketCount]f32 = std.mem.zeroes([telemetry.TelemetryPacketCount]f32);
-
 // const IntDragDrop = struct { "" };
 
 pub fn displayFloat(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
@@ -362,6 +360,12 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
                 c.igPopItemWidth();
                 c.igTreePop();
             }
+        }, //:)
+        .@"enum" => {
+            // const tagName = @tagName(data);
+            // c.igTextUnformatted(tagName, tagName[tagName.len]);
+            // // c.igDataTypeFormatString(buf: [*c]u8, buf_size: c_int, data_type: ImGuiDataType, p_data: ?*const anyopaque, format: [*c]const u8)
+            // if (displayInt("##" ++ name, data, ValueType)) packet.queued = true;
         },
         .int => {
             if (displayInt("##" ++ name, data, ValueType)) packet.queued = true;
@@ -416,15 +420,18 @@ var drag_drop_payload: PlotData = undefined;
 var my_bool: bool = false;
 
 pub fn list(comptime TelometerInstance: type, instance: *TelometerInstance) void {
+    const state = struct {
+        var updatesDecay = std.mem.zeroes([TelometerInstance.count]f32);
+    };
     if (c.igBegin("data", null, 0)) {}
 
-    inline for (@typeInfo(telemetry.TelemetryTypes).@"struct".fields, 0..) |packetType, i| {
+    inline for (@typeInfo(TelometerInstance.Struct).@"struct".fields, 0..) |packetType, i| {
         const packet: *tm.Data = &instance.packet_struct[i];
 
-        updatesDecay[i] *= 0.99;
+        state.updatesDecay[i] *= 0.99;
 
         if (packet.received) {
-            updatesDecay[i] = 1;
+            state.updatesDecay[i] = 1;
         }
 
         c.igPushID_Int(@intCast(i));
@@ -434,9 +441,9 @@ pub fn list(comptime TelometerInstance: type, instance: *TelometerInstance) void
             "Updated?",
             c.ImVec4{
                 .x = 0.1,
-                .y = 0.9 * updatesDecay[i],
+                .y = 0.9 * state.updatesDecay[i],
                 .z = 0.05,
-                .w = updatesDecay[i],
+                .w = state.updatesDecay[i],
             },
             0,
             c.ImVec2{ .x = c.igGetFrameHeight(), .y = c.igGetFrameHeight() },
