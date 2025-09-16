@@ -135,6 +135,10 @@ const CANBackend: type = struct {
 
     pub fn read(self: *Self, buffer: ?[*]u8, size: usize) !void {
         if (buffer) |buf| {
+            if (self.frame.data.len < size) {
+                std.debug.print("ok we fucked this one up folks - id:0x{x},  data len:{}, requested:{}\n", .{ self.frame.id, self.frame.data.len, size });
+                return;
+            }
             @memcpy(
                 buf[0..size],
                 self.frame.data[0..size],
@@ -144,16 +148,14 @@ const CANBackend: type = struct {
 
     pub fn translateHeader(self: Self, id: u32) !tm.Header {
         return switch (id) {
-            0x300 => tm.Header{ .id = 1 },
-            0x301 => tm.Header{ .id = 4 },
-            0x707 => tm.Header{ .id = 2 },
-            0x709 => tm.Header{ .id = 7 },
-            0x19107171 | 1 << 31 => tm.Header{ .id = 8 },
-            0x708 => tm.Header{ .id = 6 },
-            0x401 => tm.Header{ .id = 11 },
-            0x002 => tm.Header{ .id = 12 },
             0 => tm.Header{ .id = 0 },
+            0x300 => tm.Header{ .id = 1 },
+            0x707 => tm.Header{ .id = 2 },
+            0x301 => tm.Header{ .id = 4 },
             (0x1918FF71 | 1 << 31) => tm.Header{ .id = 5 },
+            0x708 => tm.Header{ .id = 6 },
+            0x709 => tm.Header{ .id = 7 },
+            (0x19107171 | 1 << 31) => tm.Header{ .id = 8 },
             (0x1928FF71 | 1 << 31) => tm.Header{ .id = 9 },
             (0x704) => {
                 if (self.frame.data[0] == 3 and self.frame.data[1] == 1) {
@@ -161,6 +163,8 @@ const CANBackend: type = struct {
                 }
                 return CanError.UnknownCanID;
             },
+            0x401 => tm.Header{ .id = 11 },
+            0x002 => tm.Header{ .id = 12 },
             ((0b111 << 8) | 0xC) => tm.Header{ .id = 14 },
             ((0b111 << 8) | 0xD) => tm.Header{ .id = 15 },
             (0x191AFF71 | 1 << 31) => tm.Header{ .id = 16 },
@@ -183,7 +187,8 @@ const CANBackend: type = struct {
                 return null;
             }
             // self.data_start = self.frame.data.len - self.frame.len;
-            return self.translateHeader(self.frame.id) catch continue;
+            // return self.translateHeader(self.frame.id) catch continue;
+            return tm.Header{ .id = self.frame.id };
         }
     }
 

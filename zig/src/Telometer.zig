@@ -18,8 +18,11 @@ fn packedSize(comptime T: type) usize {
 }
 
 pub const Header = telometer.TelometerHeader;
+const TelometerError = error{
+    UnknownId,
+};
 
-pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type) type {
+pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type, comptime IdMap: [@typeInfo(InstanceStruct).@"struct".fields.len]u32) type {
     return struct {
         const Self = @This();
         const count: usize = @typeInfo(InstanceStruct).@"struct".fields.len;
@@ -46,6 +49,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type) 
                 data.queued = false;
                 data.locked = false;
                 data.received = false;
+                std.debug.print("data: {any}\n", .{data});
             }
 
             self.log = try log.Log(InstanceStruct).init(log_header, self.data);
@@ -62,6 +66,15 @@ pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type) 
             self.log.endLog() catch unreachable;
         }
 
+        pub fn mapId(id: u32) !u16 {
+            for (IdMap, 0..) |mapped_id, i| {
+                if (mapped_id == id) {
+                    return @intCast(i);
+                }
+            }
+            return TelometerError.UnknownId;
+        }
+
         pub fn update(self: *Self) void {
             for (&self.packet_struct) |*packet| {
                 packet.received = false;
@@ -76,7 +89,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type) 
                     continue;
                 }
 
-                if (!self.backend.writePacket(.{ .id = current_id }, packet.*)) {
+                if (!self.backend.writePacket(.{ .id = IdMap[current_id] }, packet.*)) {
                     self.next_packet = current_id;
                     break;
                 }
@@ -87,12 +100,17 @@ pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type) 
             }
 
             while (self.backend.getNextHeader()) |header| {
-                if (header.id >= count) {
-                    std.log.err("Invalid header", .{});
-                    continue;
-                }
+                // if (header.id >= count) {
+                //     std.log.err("Invalid header", .{});
+                //     continue;
+                // }
 
-                var packet = &self.packet_struct[header.id];
+                const index: u16 = mapId(header.id) catch |e| {
+                    std.debug.print("ERROR: {} - id = 0x{x}\n", .{ e, header.id });
+                    continue;
+                };
+
+                var packet = &self.packet_struct[index];
 
                 if (packet.locked) {
                     self.backend.read(null, packet.size) catch |e| {

@@ -7,7 +7,6 @@
   P(N, CarHeartBeat, MsgCarHeartbeat)                                          \
   P(N, Throttle, ThrottlePacket)                                               \
   P(N, Pedal, PedalInfo)                                                       \
-  P(N, PedalFault, PedalFaultInfo)                                             \
   P(N, Brake, BrakePacket)                                                     \
   P(N, inverterHS1, MsgInverterHS1TorqueFeedback)                              \
   P(N, PedalCounts, CountsInfo)                                                \
@@ -17,7 +16,6 @@
   P(N, Voltage, MsgVoltageResponse)                                            \
   P(N, MinMax, MsgCarVoltageDistribution)                                      \
   P(N, AMS, TelemPacket)                                                       \
-  P(N, IMU_PITCH, TelemPacket)                                                 \
   P(N, SusTravel, SusTravelCountsInfo)                                         \
   P(N, Wheelspeed, WheelSpeedMeasurement)                                      \
   P(N, inverterHS3, MsgInverterHS3TemperatureFeedback)

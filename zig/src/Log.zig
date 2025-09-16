@@ -144,7 +144,7 @@ pub fn Log(comptime PacketsStruct: type) type {
 
             const now = std.time.microTimestamp();
 
-            std.debug.print("what the fuck? {} \n", .{self.header.end_time});
+            // std.debug.print("what the fuck? {} \n", .{self.header.end_time});
             self.header.end_time = now;
             try self.writer.writer().writeInt(i64, now, std.builtin.Endian.little);
             try self.writer.writer().writeStruct(header);

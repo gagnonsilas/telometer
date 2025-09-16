@@ -26,8 +26,25 @@ fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error {}: {s}\n", .{ err, desc });
 }
 
+const ids = [_]u32{
+    0x0,
+    0x300,
+    0x707,
+    0x301,
+    (0x1918FF71 | 1 << 31),
+    0x708,
+    0x709,
+    (0x19107171 | 1 << 31),
+    (0x1928FF71 | 1 << 31),
+    0x704,
+    0x401,
+    0x002,
+    ((0b111 << 8) | 0xC),
+    ((0b111 << 8) | 0xD),
+    (0x191AFF71 | 1 << 31),
+};
 var backend: Backend = undefined;
-const TelometerInstance = tm.TelometerInstance(Backend, telemetry.TelemetryPackets);
+const TelometerInstance = tm.TelometerInstance(Backend, telemetry.TelemetryTypes, ids);
 var instance: TelometerInstance = undefined;
 
 var plot: dash.Plot = undefined;
@@ -97,7 +114,7 @@ pub fn main() !void {
 
         instance.update();
         log_interface.update();
-        dash.list(&instance);
+        dash.list(TelometerInstance, &instance);
         plot.update();
 
         dashboard.render(clear_color);

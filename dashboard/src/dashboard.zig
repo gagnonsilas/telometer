@@ -415,7 +415,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
 var drag_drop_payload: PlotData = undefined;
 var my_bool: bool = false;
 
-pub fn list(instance: *tm.TelometerInstance(Backend, telemetry.TelemetryPackets)) void {
+pub fn list(comptime TelometerInstance: type, instance: *TelometerInstance) void {
     if (c.igBegin("data", null, 0)) {}
 
     inline for (@typeInfo(telemetry.TelemetryTypes).@"struct".fields, 0..) |packetType, i| {
