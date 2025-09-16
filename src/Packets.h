@@ -14,36 +14,18 @@
   P(N, BrakeCounts, BrakeCountsInfo)                                           \
   P(N, inverterHC1, MsgInverterHC1Demands)                                     \
   P(N, inverterHD1, MsgInverterHD1DebugCurrents)                               \
-  P(N, Voltage, MsgVoltageResponse)                               \
-  P(N, MinMax, MsgCarVoltageDistribution)                               \
-  P(N, AMS, TelemPacket)                               \
-  P(N, IMU_PITCH, TelemPacket)
+  P(N, Voltage, MsgVoltageResponse)                                            \
+  P(N, MinMax, MsgCarVoltageDistribution)                                      \
+  P(N, AMS, TelemPacket)                                                       \
+  P(N, IMU_PITCH, TelemPacket)                                                 \
+  P(N, SusTravel, SusTravelCountsInfo)                                         \
+  P(N, Wheelspeed, WheelSpeedMeasurement)                                      \
+  P(N, inverterHS3, MsgInverterHS3TemperatureFeedback)
 
-// P(N, IMU_ROLL, TelemPacket)                                                  \
-  // P(N, IMU_X, TelemPacket)                                                     \
-  // P(N, IMU_y, TelemPacket)                                                     \
-  // P(N, IMU_Z, TelemPacket)                                                     \
-  // P(N, MAG_X, TelemPacket)                                                     \
-  // P(N, MAG_Y, TelemPacket)                                                     \
-  // P(N, MAG_Z, TelemPacket)                                                     \
-  // P(N, VBUS, TelemPacket)                                                      \
-  // P(N, IBUS, TelemPacket)                                                      \
-  // P(N, MOTOR_RPM, TelemPacket)                                                 \
-  // P(N, GPS_LAT, TelemPacket)                                                   \
-  // P(N, GPS_LON, TelemPacket)                                                   \
-  // P(N, STEERING_WHEEL_ANGLE, TelemPacket)                                      \
-  // P(N, SUSPENSION_FR, TelemPacket)                                             \
-  // P(N, SUSPENSION_FL, TelemPacket)                                             \
-  // P(N, SUSPENSION_BR, TelemPacket)                                             \
-  // P(N, SUSPENSION_BL, TelemPacket)                                             \
-  // P(N, WHEELSPEED_FR, TelemPacket)                                             \
-  // P(N, WHEELSPEED_FL, TelemPacket)                                             \
-  // P(N, WHEELSPEED_BR, TelemPacket)                                             \
-  // P(N, WHEELSPEED_BL, TelemPacket)                                             \
-  // P(N, DRIVER_HEARTRATE, TelemPacket)                                          \
-  // P(N, PUMP_SPEED, TelemPacket)
-// #define ID(namespace, id) (namespace << 8 | id)
-// #define ThrottleID 768
+typedef struct __attribute__((__packed__)) MsgWheelSpeedMeasurement {
+  uint8_t wheel_id;
+  int32_t electrical_milliradians_second;
+} WheelSpeedMeasurement;
 
 typedef struct __attribute__((__packed__)) ThrottlePacket {
   uint32_t throttle;
@@ -108,6 +90,22 @@ typedef struct __attribute__((__packed__)) BrakeCountsInfo {
   uint16_t zero_two;
 } BrakeCountsInfo;
 
+typedef struct __attribute__((__packed__)) SusTravelCountsInfo {
+  uint8_t id;
+  uint16_t counts_one;
+  uint16_t counts_two;
+  // uint16_t zero_one;
+  // uint16_t zero_two;
+} SusTravelCountsInfo;
+
+typedef struct __attribute__((__packed__)) MsgInverterHS3TemperatureFeedback {
+  int16_t tempRemaining;
+  int16_t motorTemp;
+  int16_t dcLinkVoltage;
+  uint8_t checksum;
+  uint8_t seqCounter;
+}MsgInverterHS3TemperatureFeedback;
+
 typedef struct __attribute__((__packed__)) MsgInverterHC1Demands {
   int16_t torqueRequest;
   uint16_t controlWord;
@@ -132,18 +130,17 @@ typedef struct __attribute__((__packed__)) MsgCarHeartbeat {
   uint8_t caught;
 } MsgCarHeartbeat;
 
-  
 typedef struct __attribute__((__packed__)) MsgVoltageResponse {
-    uint8_t segmentID;
-    uint8_t index;
-    uint16_t voltages[3];
+  uint8_t segmentID;
+  uint8_t index;
+  uint16_t voltages[3];
 } MsgVoltageResponse;
 
 typedef struct __attribute__((__packed__)) MsgCarVoltageDistribution {
-    uint16_t min_voltage;
-    uint16_t max_voltage;
-    uint16_t avg_voltage;
-    uint16_t current;
+  uint16_t min_voltage;
+  uint16_t max_voltage;
+  uint16_t avg_voltage;
+  uint16_t current;
 } MsgCarVoltageDistribution;
 
 TELOMETER_INSTANCE(Telemetry, PACKETS)

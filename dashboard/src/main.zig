@@ -7,7 +7,7 @@ pub const c = @cImport({
     @cInclude("glad/glad.h");
     @cInclude("SDL2/SDL.h");
 });
-
+//:)
 const mat = @import("mat.zig");
 const math = std.math;
 
@@ -27,8 +27,7 @@ fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
 }
 
 var backend: Backend = undefined;
-var packets: telemetry.TelemetryPackets = undefined;
-const TelometerInstance = tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes);
+const TelometerInstance = tm.TelometerInstance(Backend, telemetry.TelemetryPackets);
 var instance: TelometerInstance = undefined;
 
 var plot: dash.Plot = undefined;
@@ -42,7 +41,7 @@ pub fn main() !void {
         if (deinit_status == .leak) @panic("TEST FAIL");
     }
 
-    packets = telemetry.initTelemetryPackets();
+    // packets = telemetry.initTelemetryPackets();
     backend = Backend.init();
 
     // const logger = try log.Log(telemetry.TelemetryTypes).init(
@@ -53,7 +52,6 @@ pub fn main() !void {
     instance = try TelometerInstance.init(
         std.heap.c_allocator,
         backend,
-        &packets,
     );
     defer instance.close();
 
@@ -99,7 +97,7 @@ pub fn main() !void {
 
         instance.update();
         log_interface.update();
-        dash.list(instance);
+        dash.list(&instance);
         plot.update();
 
         dashboard.render(clear_color);

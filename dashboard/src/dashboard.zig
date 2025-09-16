@@ -310,7 +310,7 @@ var updatesDecay: [telemetry.TelemetryPacketCount]f32 = std.mem.zeroes([telemetr
 // const IntDragDrop = struct { "" };
 
 pub fn displayFloat(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
-    const cast_data: *dataType = @ptrCast(@alignCast(data));
+    const cast_data: *align(1) dataType = @ptrCast(@alignCast(data));
     var value: f32 = std.math.lossyCast(f32, cast_data.*);
 
     if (c.igInputFloat(name, &value, 0, 0, "%1f", c.ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -322,7 +322,7 @@ pub fn displayFloat(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
 }
 
 pub fn displayInt(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
-    const castData: *dataType = @ptrCast(@alignCast(data));
+    const castData: *align(1) dataType = @ptrCast(@alignCast(data));
     var value: c_int = @truncate(@as(i64, @intCast(castData.*)));
 
     if (c.igInputInt(name, &value, 0, 0, c.ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -333,7 +333,7 @@ pub fn displayInt(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
     return false;
 }
 
-pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime parent_name: [:0]const u8, data: *ValueType, packet: *tm.Data) void {
+pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime parent_name: [:0]const u8, data: *align(1) ValueType, packet: *tm.Data) void {
     const info = @typeInfo(ValueType);
     const long_name = parent_name ++ name;
     switch (info) {
@@ -415,7 +415,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
 var drag_drop_payload: PlotData = undefined;
 var my_bool: bool = false;
 
-pub fn list(instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes)) void {
+pub fn list(instance: *tm.TelometerInstance(Backend, telemetry.TelemetryPackets)) void {
     if (c.igBegin("data", null, 0)) {}
 
     inline for (@typeInfo(telemetry.TelemetryTypes).@"struct".fields, 0..) |packetType, i| {
@@ -443,6 +443,7 @@ pub fn list(instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets, 
         )) {
             packet.queued = true;
         }
+
         c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
 
         displayValue(packetType.type, packetType.name, "", @ptrCast(@alignCast(packet.pointer)), packet);
@@ -493,18 +494,18 @@ pub const PlotData = struct {
 };
 
 pub const PlotValue = union(enum) {
-    f64: *f64,
-    f32: *f32,
-    u8: *u8,
-    i8: *i8,
-    u16: *u16,
-    i16: *i16,
-    u32: *u32,
-    i32: *i32,
-    u64: *u64,
-    i64: *i64,
-    c_int: *c_int,
-    bool: *bool,
+    f64: *align(1) f64,
+    f32: *align(1) f32,
+    u8: *align(1) u8,
+    i8: *align(1) i8,
+    u16: *align(1) u16,
+    i16: *align(1) i16,
+    u32: *align(1) u32,
+    i32: *align(1) i32,
+    u64: *align(1) u64,
+    i64: *align(1) i64,
+    c_int: *align(1) c_int,
+    bool: *align(1) bool,
 
     pub fn get_float(self: PlotValue) f64 {
         return switch (self) {

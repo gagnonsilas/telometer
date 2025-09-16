@@ -1,53 +1,9 @@
-const std = @import("std");
-const posix = std.posix;
-const MAX_UDP_PACKET_SIZE = 1024;
-const tm = @import("telometer");
-
-const telemetry = @cImport({
-    @cInclude("Packets.h");
+const fsae_packets = @import({
+    
 });
-// https://github.com/Hedwyn/canzig/blob/master/src/socketcan.zig :)
 
-const CanError = error{
-    SendFailed,
-    InterfaceNotFound,
-    SocketCanFailure,
-    UnknownCanID,
-};
 
-const SockaddrCan = extern struct {
-    can_family: u16 = posix.AF.CAN,
-    can_ifindex: i32,
-    data: [10]u8,
-};
-
-pub const CanFrame = extern struct {
-    id: u32,
-    len: u8,
-    bytes: [3]u8,
-
-    data: [8]u8 = undefined,
-};
-
-pub const Backend = CANBackend;
-
-const StrError = error{
-    BufferTooSmall,
-};
-
-/// Copies the characters from `input` to `output`
-/// Returns StrError if output is too small
-pub fn strcpy(input: []const u8, output: []u8) StrError!void {
-    if (input.len > output.len) {
-        std.debug.print("Input cannot fit into output", .{});
-        return StrError.BufferTooSmall;
-    }
-    for (0..input.len) |i| {
-        output[i] = input[i];
-    }
-}
-
-const CANBackend: type = struct {
+pub const FSAE_Backend = struct {
     const Self = @This();
     canSocket: posix.socket_t,
     addr: SockaddrCan,
@@ -106,19 +62,6 @@ const CANBackend: type = struct {
     }
 
     pub fn update(self: *Self) void {
-        _ = self; // autofix
-        // if (self.writePointer > 0) {
-        //     _ = posix.sendto(
-        //         self.canSocket,
-        //         self.writeBuffer[0..self.writePointer],
-        //         0,
-        //         &self.addr,
-        //         @sizeOf(posix.socklen_t),
-        //     ) catch {};
-        //     self.writePointer = 0;
-        // }
-
-        // self.readNextUDPPacket();
     }
 
     pub fn writePacket(self: *Self, header: tm.Header, data: tm.Data) bool {
@@ -143,6 +86,7 @@ const CANBackend: type = struct {
     }
 
     pub fn translateHeader(self: Self, id: u32) !tm.Header {
+        
         return switch (id) {
             0x300 => tm.Header{ .id = 1 },
             0x301 => tm.Header{ .id = 4 },
@@ -183,11 +127,11 @@ const CANBackend: type = struct {
                 return null;
             }
             // self.data_start = self.frame.data.len - self.frame.len;
-            return self.translateHeader(self.frame.id) catch continue;
+            return self.frame.id;
         }
     }
 
     pub fn end(self: Self) void {
         posix.close(self.updSocket);
     }
-};
+}

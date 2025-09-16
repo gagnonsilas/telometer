@@ -13,21 +13,25 @@ pub const Data = extern struct {
     received: bool,
 };
 
+fn packedSize(comptime T: type) usize {
+    return @divExact(@bitSizeOf(T), 8);
+}
+
 pub const Header = telometer.TelometerHeader;
 
-pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, comptime InstanceStruct: type) type {
+pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type) type {
     return struct {
         const Self = @This();
-        const count: usize = @typeInfo(PacketStruct).@"struct".fields.len;
+        const count: usize = @typeInfo(InstanceStruct).@"struct".fields.len;
         const log_header: log.Header = log.Header.init(12, InstanceStruct, 1, 0);
         pub const Logger = log.Log(InstanceStruct);
         backend: Backend,
         next_packet: u16 = 0,
         data: *InstanceStruct,
-        packet_struct: []Data,
+        packet_struct: [count]Data,
         log: Logger,
 
-        pub fn init(allocator: std.mem.Allocator, backend: Backend, packet_struct: *PacketStruct) !Self {
+        pub fn init(allocator: std.mem.Allocator, backend: Backend) !Self {
             var self: Self = .{
                 .backend = backend,
                 // .packet_struct = &packet_struct,
@@ -36,12 +40,20 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
                 .log = undefined,
             };
 
-            inline for (@typeInfo(PacketStruct).@"struct".fields) |packet| {
-                @field(packet_struct, packet.name).pointer = @ptrCast(&(@field(self.data.*, packet.name)));
+            inline for (@typeInfo(InstanceStruct).@"struct".fields, &self.packet_struct) |field, *data| {
+                data.pointer = @ptrCast(&(@field(self.data.*, field.name)));
+                data.size = @sizeOf(field.type);
+                data.queued = false;
+                data.locked = false;
+                data.received = false;
             }
 
             self.log = try log.Log(InstanceStruct).init(log_header, self.data);
-            self.packet_struct = std.mem.bytesAsSlice(Data, std.mem.asBytes(packet_struct));
+            // for (self.packet_struct) |*data| {
+            //     data.pointer = @ptrCast(&(@field(self.data.*, packet.name)));
+            // }
+
+            // self.packet_struct);
 
             return self;
         }
@@ -51,7 +63,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
         }
 
         pub fn update(self: *Self) void {
-            for (self.packet_struct) |*packet| {
+            for (&self.packet_struct) |*packet| {
                 packet.received = false;
             }
 
