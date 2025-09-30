@@ -79,7 +79,9 @@ pub fn main() !void {
     var dashboard = dash.Dashboard.init() catch |e| return e;
     defer dashboard.end();
 
-    dash.theme_fluent();
+    dash.theme_moonlight();
+    // dash.source_engine_theme();
+    // dash.theme_fluent();
 
     plot = dash.Plot.init(allocator);
     defer plot.cleanup();

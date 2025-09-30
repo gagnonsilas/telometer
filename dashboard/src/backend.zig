@@ -188,6 +188,9 @@ const CANBackend: type = struct {
             }
             // self.data_start = self.frame.data.len - self.frame.len;
             // return self.translateHeader(self.frame.id) catch continue;
+            if (self.frame.id == 0x02) {
+                std.debug.print("frame: {any}\n ", .{self.frame});
+            }
             return tm.Header{ .id = self.frame.id };
         }
     }
