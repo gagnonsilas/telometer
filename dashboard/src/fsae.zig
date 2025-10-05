@@ -1,1 +1,1 @@
-/home/silas/projects/ev25/common/code/src/telometer.zig
+../../../ev25/common/code/src/telometer.zig

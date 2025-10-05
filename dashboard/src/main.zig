@@ -141,6 +141,77 @@ pub fn main() !void {
         dash.list(TelometerInstance, &instance);
         plot.update();
 
+        { // can sender
+            if (c.igBegin("CAN Write", null, 0)) {}
+
+            const state = struct {
+                pub var selected: ?usize = null;
+                pub var data: fsae.TelometerTypes = std.mem.zeroes(fsae.TelometerTypes);
+            };
+
+            const Fields = std.meta.fields(fsae.TelometerTypes);
+            const currently_selected: []const u8 = blk: {
+                inline for (Fields, 0..) |field, idx| {
+                    if (state.selected == idx) {
+                        break :blk field.name;
+                    }
+                }
+
+                break :blk "None";
+            };
+
+            // fsae.TelometerTypes
+            if (c.igBeginCombo("Type", currently_selected.ptr, 0)) {
+                inline for (Fields, 0..) |field, idx| {
+                    if (c.igSelectable_Bool(
+                        field.name,
+                        false,
+                        0,
+                        .{ .x = 0, .y = 0 },
+                    )) {
+                        state.selected = idx;
+                    }
+                }
+
+                c.igEndCombo();
+            }
+
+            if (state.selected) |selected| {
+                inline for (Fields, 0..) |field, idx| {
+                    if (idx == selected) {
+                        const full_pack = &@field(state.data, field.name);
+                        inline for (std.meta.fields(field.type)) |field2| {
+                            const data = &@field(full_pack.*, field2.name);
+                            var fake_data: tm.Data = undefined;
+                            dash.displayValue(
+                                field2.type,
+                                field2.name,
+                                "",
+                                data,
+                                &fake_data,
+                            );
+                        }
+                        if (c.igButton("Send! :3", .{ .x = 0, .y = 0 })) {
+                            var data = std.mem.zeroes([8]u8);
+                            std.mem.copyForwards(u8, &data, std.mem.asBytes(full_pack));
+                            // std.debug.print("{}\n", .{backend.canSocket});
+                            // var tes: [32]u8 = undefined;
+                            // _ = std.posix.system.recvfrom(backend.canSocket, &tes, 0, null, null);
+                            const bytes = std.mem.toBytes(@import("backend.zig").CanFrame{
+                                .id = field.type.id,
+                                .len = @sizeOf(field.type),
+                                .bytes = std.mem.zeroes([3]u8),
+                                .data = data,
+                            });
+                            _ = std.posix.system.write(backend.canSocket, (&bytes).ptr, bytes.len);
+                        }
+                    }
+                }
+            }
+
+            c.igEnd();
+        }
+
         dashboard.render(clear_color);
     }
 }

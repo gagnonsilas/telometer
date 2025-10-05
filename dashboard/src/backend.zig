@@ -118,6 +118,10 @@ const CANBackend: type = struct {
             return CanError.SocketCanFailure;
         };
 
+        // catch {
+        //     return CanError.SocketCanFailure;
+        // };
+
         self.connected = true;
         std.debug.print("Bound to socketcan successfully\n", .{});
     }
