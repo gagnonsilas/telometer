@@ -149,15 +149,13 @@ const CANBackend: type = struct {
                 };
             }
             c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
-            c.igPushItemWidth(c.igGetStyle().*.ite.x)
-
+            // c.igPushItemWidth(c.igGetStyle().*.ite.x)
 
             if (c.igCombo_Str("Interface", &interface, "can0\x00can1\x00vcan0", 3)) {
                 self.openCANSocket() catch |e| {
                     std.debug.print("error trying to open can socket {}\n", .{e});
                 };
             }
-
 
             // if (c.igBegin)
         }
