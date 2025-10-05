@@ -74,7 +74,7 @@ pub fn main() !void {
     );
     defer instance.close();
 
-    var log_interface = dash.LogInterface(TelometerInstance.Logger).init(&instance.log);
+    // var log_interface = dash.LogInterface(TelometerInstance.Logger).init(&instance.log);
 
     var dashboard = dash.Dashboard.init() catch |e| return e;
     defer dashboard.end();
@@ -106,18 +106,38 @@ pub fn main() !void {
         }
 
         dashboard.init_frame();
+        // if (c.igBeginPopupContextItem("test", c.ImGuiPopupFlags_MouseButtonRight)) {
+        //     std.debug.print("WOOOO!3 ", .{});
+        //     if (c.igMenuItem_Bool("test", null, true, true)) {
+        //         std.debug.print("WOOOO!4 ", .{});
+        //     }
+        //     c.igEndPopup();
+        // }
 
         if (c.igBegin("Yippee!", null, 0)) {
             if (c.igButton("Hi Silas!", .{})) {
                 running = false;
             }
-            // _ = c.igInputText("File:", out_path, 0, 0, 0, 0);A
+            // if (c.igBeginPopupContextItem("test", c.ImGuiPopupFlags_MouseButtonRight)) {
+            //     std.debug.print("WOOOO!3 ", .{});
+            // }
+            // // _ = c.igInputText("File:", out_path, 0, 0, 0, 0);A
+            // if (c.igButton("Hi Silas! 2", .{})) {
+            //     // running = false;
+            //     c.igOpenPopup_Str("hi??", c.ImGuiPopupFlags_None);
+            // }
+            // if (c.igBeginPopup("hi??", c.ImGuiPopupFlags_None)) {
+            //     // std.debug.print("WOOOO!2 ", .{});
+            //     if (c.igMenuItem_Bool("test", null, true, true)) {
+            //         std.debug.print("WOOOO!4 \n", .{});
+            //     }
+            //     c.igEndPopup();
+            // }
         }
-
         c.igEnd();
 
         instance.update();
-        log_interface.update();
+        // log_interface.update();
         dash.list(TelometerInstance, &instance);
         plot.update();
 

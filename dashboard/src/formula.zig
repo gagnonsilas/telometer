@@ -1,7 +1,4 @@
-const fsae_packets = @import({
-    
-});
-
+const fsae_packets = @import({});
 
 pub const FSAE_Backend = struct {
     const Self = @This();
@@ -61,8 +58,7 @@ pub const FSAE_Backend = struct {
         self.addr = addr;
     }
 
-    pub fn update(self: *Self) void {
-    }
+    pub fn update(self: *Self) void {}
 
     pub fn writePacket(self: *Self, header: tm.Header, data: tm.Data) bool {
         _ = data; // autofix
@@ -86,7 +82,6 @@ pub const FSAE_Backend = struct {
     }
 
     pub fn translateHeader(self: Self, id: u32) !tm.Header {
-        
         return switch (id) {
             0x300 => tm.Header{ .id = 1 },
             0x301 => tm.Header{ .id = 4 },
@@ -134,4 +129,4 @@ pub const FSAE_Backend = struct {
     pub fn end(self: Self) void {
         posix.close(self.updSocket);
     }
-}
+};

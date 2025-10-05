@@ -79,8 +79,8 @@ pub fn LogInterface(comptime Logger: type) type {
         }
 
         pub fn update(self: *Self) void {
-            defer c.igEnd();
             if (c.igBegin("Log File", null, 0)) {
+                // defer c.igEnd();
                 _ = c.igInputText("Log File", &log_path, 256, c.ImGuiInputTextFlags_None, null, null);
                 if (c.igButton("OPEN", .{})) {
                     // _ = (std.Thread.spawn(.{}, openFile, .{&log_path}) catch unreachable).detach();
@@ -118,6 +118,7 @@ pub fn LogInterface(comptime Logger: type) type {
 
                     c.ImPlot_EndPlot();
                 }
+                c.igEnd();
             }
         }
     };
@@ -589,6 +590,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
                 drag_drop_payload = PlotData{
                     .pointer = @unionInit(PlotValue, @typeName(ValueType), @ptrCast(@alignCast(data))),
                     .updated = &packet.received,
+                    .color = undefined,
                     .name = long_name,
                 };
                 _ = c.igSetDragDropPayload("f32", &drag_drop_payload, @sizeOf(PlotData), c.ImGuiCond_Once);
@@ -607,40 +609,40 @@ pub fn list(comptime TelometerInstance: type, instance: *TelometerInstance) void
     const state = struct {
         var updatesDecay = std.mem.zeroes([TelometerInstance.count]f32);
     };
-    if (c.igBegin("data", null, 0)) {}
+    if (c.igBegin("data", null, 0)) {
+        inline for (@typeInfo(TelometerInstance.Struct).@"struct".fields, 0..) |packetType, i| {
+            const packet: *tm.Data = &instance.packet_struct[i];
 
-    inline for (@typeInfo(TelometerInstance.Struct).@"struct".fields, 0..) |packetType, i| {
-        const packet: *tm.Data = &instance.packet_struct[i];
+            state.updatesDecay[i] *= 0.99;
 
-        state.updatesDecay[i] *= 0.99;
+            if (packet.received) {
+                state.updatesDecay[i] = 1;
+            }
 
-        if (packet.received) {
-            state.updatesDecay[i] = 1;
+            c.igPushID_Int(@intCast(i));
+            defer c.igPopID();
+
+            if (c.igColorButton(
+                "Updated?",
+                c.ImVec4{
+                    .x = 0.1,
+                    .y = 0.9 * state.updatesDecay[i],
+                    .z = 0.05,
+                    .w = state.updatesDecay[i],
+                },
+                0,
+                c.ImVec2{ .x = c.igGetFrameHeight(), .y = c.igGetFrameHeight() },
+            )) {
+                packet.queued = true;
+            }
+
+            c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+
+            displayValue(packetType.type, packetType.name, "", @ptrCast(@alignCast(packet.pointer)), packet);
         }
 
-        c.igPushID_Int(@intCast(i));
-        defer c.igPopID();
-
-        if (c.igColorButton(
-            "Updated?",
-            c.ImVec4{
-                .x = 0.1,
-                .y = 0.9 * state.updatesDecay[i],
-                .z = 0.05,
-                .w = state.updatesDecay[i],
-            },
-            0,
-            c.ImVec2{ .x = c.igGetFrameHeight(), .y = c.igGetFrameHeight() },
-        )) {
-            packet.queued = true;
-        }
-
-        c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
-
-        displayValue(packetType.type, packetType.name, "", @ptrCast(@alignCast(packet.pointer)), packet);
+        c.igEnd();
     }
-
-    c.igEnd();
 }
 
 pub const PlotData = struct {
@@ -652,6 +654,7 @@ pub const PlotData = struct {
     name: [*c]const u8,
     offset: i32 = 0,
     data: std.ArrayList(DataStruct) = undefined,
+    color: c.ImVec4,
 
     pub fn initData(self: *Self, allocator: std.mem.Allocator, timestamp: f64) void {
         self.data = std.ArrayList(DataStruct).initCapacity(allocator, max_len) catch unreachable;
@@ -667,7 +670,7 @@ pub const PlotData = struct {
         if (self.updated.*) {
             self.get_value(-1).value = self.pointer.get_float();
 
-            stdout.print("{}, {}\n", .{ timestamp, self.pointer.get_float() }) catch unreachable;
+            // stdout.print("{}, {}\n", .{ timestamp, self.pointer.get_float() }) catch unreachable;
 
             if (length < max_len) {
                 self.data.append(DataStruct{ .value = self.pointer.get_float(), .time = timestamp }) catch unreachable;
@@ -676,6 +679,10 @@ pub const PlotData = struct {
                 self.get_value(-1).* = DataStruct{ .value = self.pointer.get_float(), .time = timestamp };
             }
         }
+    }
+
+    pub fn delete(self: *Self) void {
+        self.data.deinit();
     }
 
     pub fn get_value(self: *Self, index: i32) *DataStruct {
@@ -766,16 +773,42 @@ pub const Plot = struct {
 
                 if (c.ImPlot_BeginDragDropTargetPlot()) {
                     if (c.igAcceptDragDropPayload("f32", c.ImGuiDragDropFlags_None)) |payload| {
-                        self.data_pointers.append(@as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
-                        self.data_pointers.items[self.data_pointers.items.len - 1].initData(self.allocator, current_time);
+                        var created = false;
+                        for (self.data_pointers.items) |*data| {
+                            if (data.name == @as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).name) {
+                                created = true;
+                            }
+                        }
+                        for (self.data_pointers2.items) |*data| {
+                            if (data.name == @as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).name) {
+                                created = true;
+                            }
+                        }
+                        if (!created) {
+                            self.data_pointers.append(@as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
+                            self.data_pointers.items[self.data_pointers.items.len - 1].initData(self.allocator, current_time);
+                        }
                     }
                     c.ImPlot_EndDragDropTarget();
                 }
 
                 if (c.ImPlot_BeginDragDropTargetAxis(c.ImAxis_Y2)) {
                     if (c.igAcceptDragDropPayload("f32", c.ImGuiDragDropFlags_None)) |payload| {
-                        self.data_pointers2.append(@as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
-                        self.data_pointers2.items[self.data_pointers2.items.len - 1].initData(self.allocator, current_time);
+                        var created = false;
+                        for (self.data_pointers2.items) |*data| {
+                            if (data.name == @as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).name) {
+                                created = true;
+                            }
+                        }
+                        for (self.data_pointers.items) |*data| {
+                            if (data.name == @as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).name) {
+                                created = true;
+                            }
+                        }
+                        if (!created) {
+                            self.data_pointers2.append(@as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
+                            self.data_pointers2.items[self.data_pointers2.items.len - 1].initData(self.allocator, current_time);
+                        }
                     }
                     c.ImPlot_EndDragDropTarget();
                 }
@@ -784,7 +817,7 @@ pub const Plot = struct {
                 //     std.debug.print("{},", .{current_time});
                 // }
 
-                for (self.data_pointers.items) |*data| {
+                for (self.data_pointers.items, 0..) |*data, i| {
                     if (c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1].Range.Max >= current_time) {
                         data.update(current_time);
                     }
@@ -798,10 +831,23 @@ pub const Plot = struct {
                         data.offset,
                         @intCast(@sizeOf(f64) * 2),
                     );
+                    if (c.ImPlot_IsLegendEntryHovered(data.name) and c.igGetIO().*.MouseDown[1]) {
+                        c.igOpenPopup_Str(data.name, c.ImGuiPopupFlags_None);
+                    }
+                    if (c.igBeginPopup(data.name, c.ImGuiPopupFlags_None)) {
+                        if (c.igMenuItem_Bool("REMOVE", null, false, true)) {
+                            data.delete();
+                            _ = self.data_pointers.orderedRemove(i);
+                            c.igEndPopup();
+                            break; //FIXME THIS IS FUCKED NEED TO CLEANLY HANDLE DELETING FROM LOOP
+                        }
+                        _ = c.igColorPicker3("color", @ptrCast(&data.color), 0);
+                        c.igEndPopup();
+                    }
                 }
 
                 c.ImPlot_SetAxes(c.ImAxis_X1, c.ImAxis_Y2);
-                for (self.data_pointers2.items) |*data| {
+                for (self.data_pointers2.items, 0..) |*data, i| {
                     if (c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1].Range.Max >= current_time) {
                         data.update(current_time);
                     }
@@ -815,11 +861,22 @@ pub const Plot = struct {
                         data.offset,
                         @intCast(@sizeOf(f64) * 2),
                     );
-                }
 
-                // if (self.data_pointers.items.len > 0) {
-                //     std.debug.print("\n", .{});
-                // }
+                    if (c.ImPlot_IsLegendEntryHovered(data.name) and c.igGetIO().*.MouseDown[1]) {
+                        c.igOpenPopup_Str(data.name, c.ImGuiPopupFlags_None);
+                    }
+                    if (c.igBeginPopup(data.name, c.ImGuiPopupFlags_None)) {
+                        // var col: [4]f32 = undefined;
+                        if (c.igMenuItem_Bool("REMOVE", null, false, true)) {
+                            data.delete();
+                            _ = self.data_pointers2.orderedRemove(i);
+                            c.igEndPopup();
+                            break;
+                        }
+                        _ = c.igColorPicker3("color", @ptrCast(&data.color), 0);
+                        c.igEndPopup();
+                    }
+                }
 
                 c.ImPlot_EndPlot();
 

@@ -2,6 +2,14 @@ const std = @import("std");
 const posix = std.posix;
 const MAX_UDP_PACKET_SIZE = 1024;
 const tm = @import("telometer");
+pub const c = @cImport({
+    @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", {});
+    @cInclude("cimgui.h");
+    @cInclude("cimgui_impl.h");
+    @cInclude("cimplot.h");
+    @cInclude("glad/glad.h");
+    @cInclude("SDL2/SDL.h");
+});
 
 const telemetry = @cImport({
     @cInclude("Packets.h");
@@ -35,6 +43,10 @@ const StrError = error{
     BufferTooSmall,
 };
 
+// const interfaces: [3][]const u8 = .{ "can0", "can1", "vcan0" };
+
+const interfaces = [_][]const u8{ "can0", "can1", "vcan0" };
+
 /// Copies the characters from `input` to `output`
 /// Returns StrError if output is too small
 pub fn strcpy(input: []const u8, output: []u8) StrError!void {
@@ -47,12 +59,15 @@ pub fn strcpy(input: []const u8, output: []u8) StrError!void {
     }
 }
 
+var interface: i32 = 0;
+
 const CANBackend: type = struct {
     const Self = @This();
     canSocket: posix.socket_t,
     addr: SockaddrCan,
     frame: CanFrame,
     data_start: usize,
+    connected: bool,
 
     pub fn init() Self {
         var backend: Self = .{
@@ -60,13 +75,17 @@ const CANBackend: type = struct {
             .addr = undefined,
             .frame = undefined,
             .data_start = 0,
+            .connected = false,
         };
-        backend.openCANSocket() catch unreachable;
+        backend.openCANSocket() catch |e| {
+            std.debug.print("error trying to open can socket {}\n", .{e});
+        };
         std.debug.print("huh? \n", .{});
         return backend;
     }
 
     pub fn openCANSocket(self: *Self) !void {
+        self.connected = false;
         self.canSocket = try posix.socket(
             posix.AF.CAN,
             posix.SOCK.RAW | posix.SOCK.NONBLOCK,
@@ -74,7 +93,7 @@ const CANBackend: type = struct {
         );
 
         var ifname = [_]u8{0} ** 16;
-        try strcpy("vcan0", &ifname); // :)
+        try strcpy(interfaces[std.math.lossyCast(usize, interface)], &ifname); // :)
 
         var ifreq = posix.ifreq{
             .ifrn = .{ .name = ifname },
@@ -82,7 +101,7 @@ const CANBackend: type = struct {
         };
 
         posix.ioctl_SIOCGIFINDEX(self.canSocket, &ifreq) catch |e| {
-            std.debug.print("ioctl reported {} when trying to get the can interface index", .{e});
+            std.debug.print("ioctl reported: {}\nwhen trying to get the can interface index: {s}\n", .{ e, ifname });
             return CanError.InterfaceNotFound;
         };
 
@@ -98,6 +117,8 @@ const CANBackend: type = struct {
         posix.bind(self.canSocket, @ptrCast(&self.addr), @sizeOf(SockaddrCan)) catch {
             return CanError.SocketCanFailure;
         };
+
+        self.connected = true;
         std.debug.print("Bound to socketcan successfully\n", .{});
     }
 
@@ -106,17 +127,41 @@ const CANBackend: type = struct {
     }
 
     pub fn update(self: *Self) void {
-        _ = self; // autofix
-        // if (self.writePointer > 0) {
-        //     _ = posix.sendto(
-        //         self.canSocket,
-        //         self.writeBuffer[0..self.writePointer],
-        //         0,
-        //         &self.addr,
-        //         @sizeOf(posix.socklen_t),
-        //     ) catch {};
-        //     self.writePointer = 0;
-        // }
+        if (c.igBegin("Can Interface", null, 0)) {
+            // const cstring: [18]u8 =;
+            _ = c.igColorButton(
+                "Connected",
+
+                c.ImVec4{
+                    .x = 0.1,
+                    .y = 0.9 * @as(f32, @floatFromInt(@intFromBool(self.connected))),
+                    .z = 0.05,
+                    .w = 1,
+                    // .w = @as(f32, @floatCast(self.connected)),
+                },
+                0,
+                .{},
+            );
+            c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+            if (c.igButton("Connect", .{})) {
+                self.openCANSocket() catch |e| {
+                    std.debug.print("error trying to open can socket {}\n", .{e});
+                };
+            }
+            c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+            c.igPushItemWidth(c.igGetStyle().*.ite.x)
+
+
+            if (c.igCombo_Str("Interface", &interface, "can0\x00can1\x00vcan0", 3)) {
+                self.openCANSocket() catch |e| {
+                    std.debug.print("error trying to open can socket {}\n", .{e});
+                };
+            }
+
+
+            // if (c.igBegin)
+        }
+        c.igEnd();
 
         // self.readNextUDPPacket();
     }
@@ -188,9 +233,9 @@ const CANBackend: type = struct {
             }
             // self.data_start = self.frame.data.len - self.frame.len;
             // return self.translateHeader(self.frame.id) catch continue;
-            if (self.frame.id == 0x02) {
-                std.debug.print("frame: {any}\n ", .{self.frame});
-            }
+            // if (self.frame.id == 0x02) {
+            //     std.debug.print("frame: {any}\n ", .{self.frame});
+            // }
             return tm.Header{ .id = self.frame.id };
         }
     }
