@@ -61,6 +61,10 @@ pub fn strcpy(input: []const u8, output: []u8) StrError!void {
 
 var interface: i32 = 0;
 
+pub fn getInterfaceName() []const u8 {
+    return interfaces[std.math.lossyCast(usize, interface)];
+}
+
 const CANBackend: type = struct {
     const Self = @This();
     canSocket: posix.socket_t,
@@ -93,7 +97,7 @@ const CANBackend: type = struct {
         );
 
         var ifname = [_]u8{0} ** 16;
-        try strcpy(interfaces[std.math.lossyCast(usize, interface)], &ifname); // :)
+        try strcpy(getInterfaceName(), &ifname); // :)
 
         var ifreq = posix.ifreq{
             .ifrn = .{ .name = ifname },

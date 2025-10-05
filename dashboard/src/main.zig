@@ -197,13 +197,19 @@ pub fn main() !void {
                             // std.debug.print("{}\n", .{backend.canSocket});
                             // var tes: [32]u8 = undefined;
                             // _ = std.posix.system.recvfrom(backend.canSocket, &tes, 0, null, null);
-                            const bytes = std.mem.toBytes(@import("backend.zig").CanFrame{
-                                .id = field.type.id,
-                                .len = @sizeOf(field.type),
-                                .bytes = std.mem.zeroes([3]u8),
-                                .data = data,
-                            });
-                            _ = std.posix.system.write(backend.canSocket, (&bytes).ptr, bytes.len);
+                            const be = @import("backend.zig");
+                            // const bytes = std.mem.toBytes(be.CanFrame{
+                            //     .id = field.type.id,
+                            //     .len = @sizeOf(field.type),
+                            //     .bytes = std.mem.zeroes([3]u8),
+                            //     .data = data,
+                            // });
+
+                            const msg = std.fmt.allocPrint(gpa, "{}@{s}", .{ field.type.id, data });
+                            std.process.execv(gpa, &.{ "cansend", be.getInterfaceName(), msg }) catch |e| std.debug.print("{}\n", .{e});
+
+                            // _ = std.posix.system.write(backend.canSocket, (&bytes).ptr, bytes.len);
+
                         }
                     }
                 }
