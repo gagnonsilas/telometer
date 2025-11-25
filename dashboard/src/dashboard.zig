@@ -8,9 +8,9 @@ pub const c = @cImport({
     @cInclude("SDL2/SDL.h");
 });
 
-pub const nfd = @cImport({
-    @cInclude("nfd.h");
-});
+// pub const nfd = @cImport({
+// @cInclude("nfd.h");
+// });
 
 const mat = @import("mat.zig");
 const math = std.math;
@@ -29,39 +29,39 @@ pub fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error {}: {s}\n", .{ err, desc });
 }
 
-pub fn openFile(out_path: []u8) void {
-    _ = nfd.NFD_Init();
+// pub fn openFile(out_path: []u8) void {
+//     _ = nfd.NFD_Init();
 
-    const filters = [1]nfd.nfdu8filteritem_t{.{ .name = "Telometer Log", .spec = "tl" }};
-    const args: nfd.nfdopendialogu8args_t = .{
-        .filterList = @ptrCast(&filters[0]),
-        .filterCount = 1,
-    };
+//     const filters = [1]nfd.nfdu8filteritem_t{.{ .name = "Telometer Log", .spec = "tl" }};
+//     const args: nfd.nfdopendialogu8args_t = .{
+//         .filterList = @ptrCast(&filters[0]),
+//         .filterCount = 1,
+//     };
 
-    var path: [*c]u8 = null;
+//     var path: [*c]u8 = null;
 
-    const result: nfd.nfdresult_t = nfd.NFD_OpenDialogU8_With(&path, &args);
+//     const result: nfd.nfdresult_t = nfd.NFD_OpenDialogU8_With(&path, &args);
 
-    if (result != nfd.NFD_OKAY) {
-        if (nfd.NFD_GetError()) |ptr| {
-            std.debug.print("{s}\n", .{
-                std.mem.sliceTo(ptr, 0),
-            });
-        }
-        return;
-        // return error.NfdError;
-    }
+//     if (result != nfd.NFD_OKAY) {
+//         if (nfd.NFD_GetError()) |ptr| {
+//             std.debug.print("{s}\n", .{
+//                 std.mem.sliceTo(ptr, 0),
+//             });
+//         }
+//         return;
+//         // return error.NfdError;
+//     }
 
-    const len = std.mem.len(path);
-    if (len > out_path.len) {
-        std.debug.print("file path too long: {s}\n", .{path});
-        return;
-    } else {
-        @memcpy(out_path[0 .. len + 1], path[0 .. len + 1]);
-    }
+//     const len = std.mem.len(path);
+//     if (len > out_path.len) {
+//         std.debug.print("file path too long: {s}\n", .{path});
+//         return;
+//     } else {
+//         @memcpy(out_path[0 .. len + 1], path[0 .. len + 1]);
+//     }
 
-    nfd.NFD_FreePathU8(path);
-}
+//     nfd.NFD_FreePathU8(path);
+// }
 
 var log_path: [256]u8 = undefined;
 
@@ -79,11 +79,11 @@ pub fn LogInterface(comptime Logger: type) type {
         }
 
         pub fn update(self: *Self) void {
-            defer c.igEnd();
             if (c.igBegin("Log File", null, 0)) {
+                // defer c.igEnd();
                 _ = c.igInputText("Log File", &log_path, 256, c.ImGuiInputTextFlags_None, null, null);
                 if (c.igButton("OPEN", .{})) {
-                    _ = (std.Thread.spawn(.{}, openFile, .{&log_path}) catch unreachable).detach();
+                    // _ = (std.Thread.spawn(.{}, openFile, .{&log_path}) catch unreachable).detach();
                 }
                 c.igSameLine(0, 8);
                 if (c.igButton("LOAD", .{})) {
@@ -118,6 +118,7 @@ pub fn LogInterface(comptime Logger: type) type {
 
                     c.ImPlot_EndPlot();
                 }
+                c.igEnd();
             }
         }
     };
@@ -222,6 +223,182 @@ pub const Dashboard = struct {
     }
 };
 
+pub fn theme_moonlight() void {
+    var style: *c.ImGuiStyle = @ptrCast(c.igGetStyle());
+    // var colors = &style.*.Colors;
+    // NOTE: you have to use the c allocator bc ImGui will try to free it...
+    const dejavu = std.heap.c_allocator.dupe(u8, @embedFile("fonts/DejavuSansMono-5m7L.ttf")) catch unreachable;
+    // const dejavu = try std.heap.c_allocator.dupe(u8, @embedFile("fonts/Slugs Racer.ttf"));
+
+    _ = c.ImFontAtlas_AddFontFromMemoryTTF(c.igGetIO().*.Fonts, @ptrCast(dejavu), @intCast(dejavu.len), 16, c.ImFontConfig_ImFontConfig(), null);
+
+    style.Alpha = 1.0;
+    style.DisabledAlpha = 1.0;
+    style.WindowPadding = c.ImVec2{ .x = 12.0, .y = 12.0 };
+    style.WindowRounding = 11.5;
+    style.WindowBorderSize = 0.0;
+    style.WindowMinSize = c.ImVec2{ .x = 20.0, .y = 20.0 };
+    style.WindowTitleAlign = c.ImVec2{ .x = 0.5, .y = 0.5 };
+    style.WindowMenuButtonPosition = c.ImGuiDir_Right;
+    style.ChildRounding = 0.0;
+    style.ChildBorderSize = 1.0;
+    style.PopupRounding = 0.0;
+    style.PopupBorderSize = 1.0;
+    style.FramePadding = c.ImVec2{ .x = 20.0, .y = 3.400000095367432 };
+    style.FrameRounding = 11.89999961853027;
+    style.FrameBorderSize = 0.0;
+    style.ItemSpacing = c.ImVec2{ .x = 4.300000190734863, .y = 5.5 };
+    style.ItemInnerSpacing = c.ImVec2{ .x = 7.099999904632568, .y = 1.799999952316284 };
+    style.CellPadding = c.ImVec2{ .x = 12.10000038146973, .y = 9.199999809265137 };
+    style.IndentSpacing = 0.0;
+    style.ColumnsMinSpacing = 4.900000095367432;
+    style.ScrollbarSize = 11.60000038146973;
+    style.ScrollbarRounding = 15.89999961853027;
+    style.GrabMinSize = 3.700000047683716;
+    style.GrabRounding = 20.0;
+    style.TabRounding = 0.0;
+    style.TabBorderSize = 0.0;
+    style.TabMinWidthForCloseButton = 0.0;
+    style.ColorButtonPosition = c.ImGuiDir_Right;
+    style.ButtonTextAlign = c.ImVec2{ .x = 0.5, .y = 0.5 };
+    style.SelectableTextAlign = c.ImVec2{ .x = 0.0, .y = 0.0 };
+
+    // style.WindowRounding = 5.0;
+    // style.FrameRounding = 5.0;
+    // style.ScrollbarRounding = 5.0;
+    // style.GrabRounding = 5.0;
+    // style.TabRounding = 5.0;
+    // style.WindowBorderSize = 1.0;
+    // style.FrameBorderSize = 1.0;
+    // style.PopupBorderSize = 1.0;
+    // style.PopupRounding = 5.0;
+
+    style.Colors[c.ImGuiCol_Text] = c.ImVec4{ .x = 1.0, .y = 1.0, .z = 1.0, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TextDisabled] = c.ImVec4{ .x = 0.2745098173618317, .y = 0.3176470696926117, .z = 0.4509803950786591, .w = 1.0 };
+    style.Colors[c.ImGuiCol_WindowBg] = c.ImVec4{ .x = 0.0784313753247261, .y = 0.08627451211214066, .z = 0.1019607856869698, .w = 1.0 };
+    style.Colors[c.ImGuiCol_ChildBg] = c.ImVec4{ .x = 0.09250493347644806, .y = 0.100297249853611, .z = 0.1158798336982727, .w = 1.0 };
+    style.Colors[c.ImGuiCol_PopupBg] = c.ImVec4{ .x = 0.0784313753247261, .y = 0.08627451211214066, .z = 0.1019607856869698, .w = 1.0 };
+    style.Colors[c.ImGuiCol_Border] = c.ImVec4{ .x = 0.1568627506494522, .y = 0.168627455830574, .z = 0.1921568661928177, .w = 1.0 };
+    style.Colors[c.ImGuiCol_BorderShadow] = c.ImVec4{ .x = 0.0784313753247261, .y = 0.08627451211214066, .z = 0.1019607856869698, .w = 1.0 };
+    style.Colors[c.ImGuiCol_FrameBg] = c.ImVec4{ .x = 0.1120669096708298, .y = 0.1262156516313553, .z = 0.1545064449310303, .w = 1.0 };
+    style.Colors[c.ImGuiCol_FrameBgHovered] = c.ImVec4{ .x = 0.1568627506494522, .y = 0.168627455830574, .z = 0.1921568661928177, .w = 1.0 };
+    style.Colors[c.ImGuiCol_FrameBgActive] = c.ImVec4{ .x = 0.1568627506494522, .y = 0.168627455830574, .z = 0.1921568661928177, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TitleBg] = c.ImVec4{ .x = 0.0470588244497776, .y = 0.05490196123719215, .z = 0.07058823853731155, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TitleBgActive] = c.ImVec4{ .x = 0.0470588244497776, .y = 0.05490196123719215, .z = 0.07058823853731155, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TitleBgCollapsed] = c.ImVec4{ .x = 0.0784313753247261, .y = 0.08627451211214066, .z = 0.1019607856869698, .w = 1.0 };
+    style.Colors[c.ImGuiCol_MenuBarBg] = c.ImVec4{ .x = 0.09803921729326248, .y = 0.105882354080677, .z = 0.1215686276555061, .w = 1.0 };
+    style.Colors[c.ImGuiCol_ScrollbarBg] = c.ImVec4{ .x = 0.0470588244497776, .y = 0.05490196123719215, .z = 0.07058823853731155, .w = 1.0 };
+    style.Colors[c.ImGuiCol_ScrollbarGrab] = c.ImVec4{ .x = 0.1176470592617989, .y = 0.1333333402872086, .z = 0.1490196138620377, .w = 1.0 };
+    style.Colors[c.ImGuiCol_ScrollbarGrabHovered] = c.ImVec4{ .x = 0.1568627506494522, .y = 0.168627455830574, .z = 0.1921568661928177, .w = 1.0 };
+    style.Colors[c.ImGuiCol_ScrollbarGrabActive] = c.ImVec4{ .x = 0.1176470592617989, .y = 0.1333333402872086, .z = 0.1490196138620377, .w = 1.0 };
+    style.Colors[c.ImGuiCol_CheckMark] = c.ImVec4{ .x = 0.9725490212440491, .y = 1.0, .z = 0.4980392158031464, .w = 1.0 };
+    style.Colors[c.ImGuiCol_SliderGrab] = c.ImVec4{ .x = 0.971993625164032, .y = 1.0, .z = 0.4980392456054688, .w = 1.0 };
+    style.Colors[c.ImGuiCol_SliderGrabActive] = c.ImVec4{ .x = 1.0, .y = 0.7953379154205322, .z = 0.4980392456054688, .w = 1.0 };
+    style.Colors[c.ImGuiCol_Button] = c.ImVec4{ .x = 0.1176470592617989, .y = 0.1333333402872086, .z = 0.1490196138620377, .w = 1.0 };
+    style.Colors[c.ImGuiCol_ButtonHovered] = c.ImVec4{ .x = 0.1821731775999069, .y = 0.1897992044687271, .z = 0.1974248886108398, .w = 1.0 };
+    style.Colors[c.ImGuiCol_ButtonActive] = c.ImVec4{ .x = 0.1545050293207169, .y = 0.1545048952102661, .z = 0.1545064449310303, .w = 1.0 };
+    style.Colors[c.ImGuiCol_Header] = c.ImVec4{ .x = 0.1414651423692703, .y = 0.1629818230867386, .z = 0.2060086131095886, .w = 1.0 };
+    style.Colors[c.ImGuiCol_HeaderHovered] = c.ImVec4{ .x = 0.1072951927781105, .y = 0.107295036315918, .z = 0.1072961091995239, .w = 1.0 };
+    style.Colors[c.ImGuiCol_HeaderActive] = c.ImVec4{ .x = 0.0784313753247261, .y = 0.08627451211214066, .z = 0.1019607856869698, .w = 1.0 };
+    style.Colors[c.ImGuiCol_Separator] = c.ImVec4{ .x = 0.1293079704046249, .y = 0.1479243338108063, .z = 0.1931330561637878, .w = 1.0 };
+    style.Colors[c.ImGuiCol_SeparatorHovered] = c.ImVec4{ .x = 0.1568627506494522, .y = 0.1843137294054031, .z = 0.250980406999588, .w = 1.0 };
+    style.Colors[c.ImGuiCol_SeparatorActive] = c.ImVec4{ .x = 0.1568627506494522, .y = 0.1843137294054031, .z = 0.250980406999588, .w = 1.0 };
+    style.Colors[c.ImGuiCol_ResizeGrip] = c.ImVec4{ .x = 0.1459212601184845, .y = 0.1459220051765442, .z = 0.1459227204322815, .w = 1.0 };
+    style.Colors[c.ImGuiCol_ResizeGripHovered] = c.ImVec4{ .x = 0.9725490212440491, .y = 1.0, .z = 0.4980392158031464, .w = 1.0 };
+    style.Colors[c.ImGuiCol_ResizeGripActive] = c.ImVec4{ .x = 0.999999463558197, .y = 1.0, .z = 0.9999899864196777, .w = 1.0 };
+    style.Colors[c.ImGuiCol_Tab] = c.ImVec4{ .x = 0.0784313753247261, .y = 0.08627451211214066, .z = 0.1019607856869698, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TabHovered] = c.ImVec4{ .x = 0.1176470592617989, .y = 0.1333333402872086, .z = 0.1490196138620377, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TabSelected] = c.ImVec4{ .x = 0.1176470592617989, .y = 0.1333333402872086, .z = 0.1490196138620377, .w = 1.0 };
+    // style.Colors[c.ImGuiCol_TabUnfocused] = c.ImVec4{ .x = 0.0784313753247261, .y = 0.08627451211214066, .z = 0.1019607856869698, .w = 1.0 };
+    // style.Colors[c.ImGuiCol_TabUnfocusedActive] = c.ImVec4{ .x = 0.1249424293637276, .y = 0.2735691666603088, .z = 0.5708154439926147, .w = 1.0 };
+    style.Colors[c.ImGuiCol_PlotLines] = c.ImVec4{ .x = 0.5215686559677124, .y = 0.6000000238418579, .z = 0.7019608020782471, .w = 1.0 };
+    style.Colors[c.ImGuiCol_PlotLinesHovered] = c.ImVec4{ .x = 0.03921568766236305, .y = 0.9803921580314636, .z = 0.9803921580314636, .w = 1.0 };
+    style.Colors[c.ImGuiCol_PlotHistogram] = c.ImVec4{ .x = 0.8841201663017273, .y = 0.7941429018974304, .z = 0.5615870356559753, .w = 1.0 };
+    style.Colors[c.ImGuiCol_PlotHistogramHovered] = c.ImVec4{ .x = 0.9570815563201904, .y = 0.9570719599723816, .z = 0.9570761322975159, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TableHeaderBg] = c.ImVec4{ .x = 0.0470588244497776, .y = 0.05490196123719215, .z = 0.07058823853731155, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TableBorderStrong] = c.ImVec4{ .x = 0.0470588244497776, .y = 0.05490196123719215, .z = 0.07058823853731155, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TableBorderLight] = c.ImVec4{ .x = 0.0, .y = 0.0, .z = 0.0, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TableRowBg] = c.ImVec4{ .x = 0.1176470592617989, .y = 0.1333333402872086, .z = 0.1490196138620377, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TableRowBgAlt] = c.ImVec4{ .x = 0.09803921729326248, .y = 0.105882354080677, .z = 0.1215686276555061, .w = 1.0 };
+    style.Colors[c.ImGuiCol_TextSelectedBg] = c.ImVec4{ .x = 0.9356134533882141, .y = 0.9356129765510559, .z = 0.9356223344802856, .w = 1.0 };
+    style.Colors[c.ImGuiCol_DragDropTarget] = c.ImVec4{ .x = 0.4980392158031464, .y = 0.5137255191802979, .z = 1.0, .w = 1.0 };
+    style.Colors[c.ImGuiCol_NavHighlight] = c.ImVec4{ .x = 0.266094446182251, .y = 0.2890366911888123, .z = 1.0, .w = 1.0 };
+    style.Colors[c.ImGuiCol_NavWindowingHighlight] = c.ImVec4{ .x = 0.4980392158031464, .y = 0.5137255191802979, .z = 1.0, .w = 1.0 };
+    style.Colors[c.ImGuiCol_NavWindowingDimBg] = c.ImVec4{ .x = 0.196078434586525, .y = 0.1764705926179886, .z = 0.5450980663299561, .w = 0.501960813999176 };
+    style.Colors[c.ImGuiCol_ModalWindowDimBg] = c.ImVec4{ .x = 0.196078434586525, .y = 0.1764705926179886, .z = 0.5450980663299561, .w = 0.501960813999176 };
+}
+
+pub fn source_engine_theme() void {
+    c.igStyleColorsDark(null);
+    const dejavu = std.heap.c_allocator.dupe(u8, @embedFile("fonts/DejavuSansMono-5m7L.ttf")) catch unreachable;
+    // const dejavu = try std.heap.c_allocator.dupe(u8, @embedFile("fonts/Slugs Racer.ttf"));
+
+    _ = c.ImFontAtlas_AddFontFromMemoryTTF(c.igGetIO().*.Fonts, @ptrCast(dejavu), @intCast(dejavu.len), 16, c.ImFontConfig_ImFontConfig(), null);
+
+    var style: *c.ImGuiStyle = @ptrCast(c.igGetStyle());
+    var colors = &style.*.Colors;
+    colors[c.ImGuiCol_Text] = c.ImVec4{ .x = 1.00, .y = 1.00, .z = 1.00, .w = 1.00 };
+    colors[c.ImGuiCol_TextDisabled] = c.ImVec4{ .x = 0.50, .y = 0.50, .z = 0.50, .w = 1.00 };
+    colors[c.ImGuiCol_WindowBg] = c.ImVec4{ .x = 0.29, .y = 0.34, .z = 0.26, .w = 1.00 };
+    colors[c.ImGuiCol_ChildBg] = c.ImVec4{ .x = 0.29, .y = 0.34, .z = 0.26, .w = 1.00 };
+    colors[c.ImGuiCol_PopupBg] = c.ImVec4{ .x = 0.24, .y = 0.27, .z = 0.20, .w = 1.00 };
+    colors[c.ImGuiCol_Border] = c.ImVec4{ .x = 0.54, .y = 0.57, .z = 0.51, .w = 0.50 };
+    colors[c.ImGuiCol_BorderShadow] = c.ImVec4{ .x = 0.14, .y = 0.16, .z = 0.11, .w = 0.52 };
+    colors[c.ImGuiCol_FrameBg] = c.ImVec4{ .x = 0.24, .y = 0.27, .z = 0.20, .w = 1.00 };
+    colors[c.ImGuiCol_FrameBgHovered] = c.ImVec4{ .x = 0.27, .y = 0.30, .z = 0.23, .w = 1.00 };
+    colors[c.ImGuiCol_FrameBgActive] = c.ImVec4{ .x = 0.30, .y = 0.34, .z = 0.26, .w = 1.00 };
+    colors[c.ImGuiCol_TitleBg] = c.ImVec4{ .x = 0.24, .y = 0.27, .z = 0.20, .w = 1.00 };
+    colors[c.ImGuiCol_TitleBgActive] = c.ImVec4{ .x = 0.29, .y = 0.34, .z = 0.26, .w = 1.00 };
+    colors[c.ImGuiCol_TitleBgCollapsed] = c.ImVec4{ .x = 0.00, .y = 0.00, .z = 0.00, .w = 0.51 };
+    colors[c.ImGuiCol_MenuBarBg] = c.ImVec4{ .x = 0.24, .y = 0.27, .z = 0.20, .w = 1.00 };
+    colors[c.ImGuiCol_ScrollbarBg] = c.ImVec4{ .x = 0.35, .y = 0.42, .z = 0.31, .w = 1.00 };
+    colors[c.ImGuiCol_ScrollbarGrab] = c.ImVec4{ .x = 0.28, .y = 0.32, .z = 0.24, .w = 1.00 };
+    colors[c.ImGuiCol_ScrollbarGrabHovered] = c.ImVec4{ .x = 0.25, .y = 0.30, .z = 0.22, .w = 1.00 };
+    colors[c.ImGuiCol_ScrollbarGrabActive] = c.ImVec4{ .x = 0.23, .y = 0.27, .z = 0.21, .w = 1.00 };
+    colors[c.ImGuiCol_CheckMark] = c.ImVec4{ .x = 0.59, .y = 0.54, .z = 0.18, .w = 1.00 };
+    colors[c.ImGuiCol_SliderGrab] = c.ImVec4{ .x = 0.35, .y = 0.42, .z = 0.31, .w = 1.00 };
+    colors[c.ImGuiCol_SliderGrabActive] = c.ImVec4{ .x = 0.54, .y = 0.57, .z = 0.51, .w = 0.50 };
+    colors[c.ImGuiCol_Button] = c.ImVec4{ .x = 0.29, .y = 0.34, .z = 0.26, .w = 0.40 };
+    colors[c.ImGuiCol_ButtonHovered] = c.ImVec4{ .x = 0.35, .y = 0.42, .z = 0.31, .w = 1.00 };
+    colors[c.ImGuiCol_ButtonActive] = c.ImVec4{ .x = 0.54, .y = 0.57, .z = 0.51, .w = 0.50 };
+    colors[c.ImGuiCol_Header] = c.ImVec4{ .x = 0.35, .y = 0.42, .z = 0.31, .w = 1.00 };
+    colors[c.ImGuiCol_HeaderHovered] = c.ImVec4{ .x = 0.35, .y = 0.42, .z = 0.31, .w = 0.6 };
+    colors[c.ImGuiCol_HeaderActive] = c.ImVec4{ .x = 0.54, .y = 0.57, .z = 0.51, .w = 0.50 };
+    colors[c.ImGuiCol_Separator] = c.ImVec4{ .x = 0.14, .y = 0.16, .z = 0.11, .w = 1.00 };
+    colors[c.ImGuiCol_SeparatorHovered] = c.ImVec4{ .x = 0.54, .y = 0.57, .z = 0.51, .w = 1.00 };
+    colors[c.ImGuiCol_SeparatorActive] = c.ImVec4{ .x = 0.59, .y = 0.54, .z = 0.18, .w = 1.00 };
+    colors[c.ImGuiCol_ResizeGrip] = c.ImVec4{ .x = 0.19, .y = 0.23, .z = 0.18, .w = 0.00 }; // grip invis
+    colors[c.ImGuiCol_ResizeGripHovered] = c.ImVec4{ .x = 0.54, .y = 0.57, .z = 0.51, .w = 1.00 };
+    colors[c.ImGuiCol_ResizeGripActive] = c.ImVec4{ .x = 0.59, .y = 0.54, .z = 0.18, .w = 1.00 };
+    colors[c.ImGuiCol_Tab] = c.ImVec4{ .x = 0.35, .y = 0.42, .z = 0.31, .w = 1.00 };
+    colors[c.ImGuiCol_TabHovered] = c.ImVec4{ .x = 0.54, .y = 0.57, .z = 0.51, .w = 0.78 };
+    colors[c.ImGuiCol_TabSelected] = c.ImVec4{ .x = 0.59, .y = 0.54, .z = 0.18, .w = 1.00 };
+    // colors[c.ImGuiCol_TabUnfocused] = c.ImVec4{ .x = 0.24, .y = 0.27, .z = 0.20, .w = 1.00 };
+    // colors[c.ImGuiCol_TabUnfocusedActive] = c.ImVec4{ .x = 0.35, .y = 0.42, .z = 0.31, .w = 1.00 };
+    colors[c.ImGuiCol_DockingPreview] = c.ImVec4{ .x = 0.59, .y = 0.54, .z = 0.18, .w = 1.00 };
+    colors[c.ImGuiCol_DockingEmptyBg] = c.ImVec4{ .x = 0.20, .y = 0.20, .z = 0.20, .w = 1.00 };
+    colors[c.ImGuiCol_PlotLines] = c.ImVec4{ .x = 0.61, .y = 0.61, .z = 0.61, .w = 1.00 };
+    colors[c.ImGuiCol_PlotLinesHovered] = c.ImVec4{ .x = 0.59, .y = 0.54, .z = 0.18, .w = 1.00 };
+    colors[c.ImGuiCol_PlotHistogram] = c.ImVec4{ .x = 1.00, .y = 0.78, .z = 0.28, .w = 1.00 };
+    colors[c.ImGuiCol_PlotHistogramHovered] = c.ImVec4{ .x = 1.00, .y = 0.60, .z = 0.00, .w = 1.00 };
+    colors[c.ImGuiCol_TextSelectedBg] = c.ImVec4{ .x = 0.59, .y = 0.54, .z = 0.18, .w = 1.00 };
+    colors[c.ImGuiCol_DragDropTarget] = c.ImVec4{ .x = 0.73, .y = 0.67, .z = 0.24, .w = 1.00 };
+    colors[c.ImGuiCol_NavHighlight] = c.ImVec4{ .x = 0.59, .y = 0.54, .z = 0.18, .w = 1.00 };
+    colors[c.ImGuiCol_NavWindowingHighlight] = c.ImVec4{ .x = 1.00, .y = 1.00, .z = 1.00, .w = 0.70 };
+    colors[c.ImGuiCol_NavWindowingDimBg] = c.ImVec4{ .x = 0.80, .y = 0.80, .z = 0.80, .w = 0.20 };
+    colors[c.ImGuiCol_ModalWindowDimBg] = c.ImVec4{ .x = 0.80, .y = 0.80, .z = 0.80, .w = 0.35 };
+
+    // ImGuiStyle& style = ImGui::GetStyle();
+    style.FrameBorderSize = 1.0;
+    style.WindowRounding = 0.0;
+    style.ChildRounding = 0.0;
+    style.FrameRounding = 0.0;
+    style.PopupRounding = 0.0;
+    style.ScrollbarRounding = 0.0;
+    style.GrabRounding = 0.0;
+    style.TabRounding = 0.0;
+}
+
 pub fn theme_fluent() void {
     // var io = c.igGetIO();
 
@@ -305,12 +482,10 @@ pub fn theme_fluent() void {
     style.ScrollbarSize = 16.0;
 }
 
-var updatesDecay: [telemetry.TelemetryPacketCount]f32 = std.mem.zeroes([telemetry.TelemetryPacketCount]f32);
-
 // const IntDragDrop = struct { "" };
 
 pub fn displayFloat(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
-    const cast_data: *dataType = @ptrCast(@alignCast(data));
+    const cast_data: *align(1) dataType = @ptrCast(@alignCast(data));
     var value: f32 = std.math.lossyCast(f32, cast_data.*);
 
     if (c.igInputFloat(name, &value, 0, 0, "%1f", c.ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -322,7 +497,7 @@ pub fn displayFloat(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
 }
 
 pub fn displayInt(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
-    const castData: *dataType = @ptrCast(@alignCast(data));
+    const castData: *align(1) dataType = @ptrCast(@alignCast(data));
     var value: c_int = @truncate(@as(i64, @intCast(castData.*)));
 
     if (c.igInputInt(name, &value, 0, 0, c.ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -333,7 +508,7 @@ pub fn displayInt(name: [*c]const u8, data: *anyopaque, dataType: type) bool {
     return false;
 }
 
-pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime parent_name: [:0]const u8, data: *ValueType, packet: *tm.Data) void {
+pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime parent_name: [:0]const u8, data: *align(1) ValueType, packet: *tm.Data) void {
     const info = @typeInfo(ValueType);
     const long_name = parent_name ++ name;
     switch (info) {
@@ -362,6 +537,20 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
                 c.igPopItemWidth();
                 c.igTreePop();
             }
+        }, //:)
+        .@"enum" => |_| {
+            // const thing =  catch blk: {
+            //     std.debug.print("INVALIDD VALUE\n", .{});
+            //     break :blk @as(ValueType, @enumFromInt(0));
+            // };
+
+            // std.debug.print("thing: {}\n", .{thing});
+            const tagName = if (std.meta.intToEnum(ValueType, @intFromEnum(data.*))) |_| @tagName(data.*) else |_| "INVALID";
+
+            c.igTextUnformatted(tagName, tagName[tagName.len]);
+            c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+            // // c.igDataTypeFormatString(buf: [*c]u8, buf_size: c_int, data_type: ImGuiDataType, p_data: ?*const anyopaque, format: [*c]const u8)
+            if (displayInt("##" ++ name, @ptrCast(data), @TypeOf(@intFromEnum(data.*)))) packet.queued = true;
         },
         .int => {
             if (displayInt("##" ++ name, data, ValueType)) packet.queued = true;
@@ -401,6 +590,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
                 drag_drop_payload = PlotData{
                     .pointer = @unionInit(PlotValue, @typeName(ValueType), @ptrCast(@alignCast(data))),
                     .updated = &packet.received,
+                    .color = undefined,
                     .name = long_name,
                 };
                 _ = c.igSetDragDropPayload("f32", &drag_drop_payload, @sizeOf(PlotData), c.ImGuiCond_Once);
@@ -415,40 +605,44 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
 var drag_drop_payload: PlotData = undefined;
 var my_bool: bool = false;
 
-pub fn list(instance: tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes)) void {
-    if (c.igBegin("data", null, 0)) {}
+pub fn list(comptime TelometerInstance: type, instance: *TelometerInstance) void {
+    const state = struct {
+        var updatesDecay = std.mem.zeroes([TelometerInstance.count]f32);
+    };
+    if (c.igBegin("data", null, 0)) {
+        inline for (@typeInfo(TelometerInstance.Struct).@"struct".fields, 0..) |packetType, i| {
+            const packet: *tm.Data = &instance.packet_struct[i];
 
-    inline for (@typeInfo(telemetry.TelemetryTypes).@"struct".fields, 0..) |packetType, i| {
-        const packet: *tm.Data = &instance.packet_struct[i];
+            state.updatesDecay[i] *= 0.99;
 
-        updatesDecay[i] *= 0.99;
+            if (packet.received) {
+                state.updatesDecay[i] = 1;
+            }
 
-        if (packet.received) {
-            updatesDecay[i] = 1;
+            c.igPushID_Int(@intCast(i));
+            defer c.igPopID();
+
+            if (c.igColorButton(
+                "Updated?",
+                c.ImVec4{
+                    .x = 0.1,
+                    .y = 0.9 * state.updatesDecay[i],
+                    .z = 0.05,
+                    .w = state.updatesDecay[i],
+                },
+                0,
+                c.ImVec2{ .x = c.igGetFrameHeight(), .y = c.igGetFrameHeight() },
+            )) {
+                packet.queued = true;
+            }
+
+            c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+
+            displayValue(packetType.type, packetType.name, "", @ptrCast(@alignCast(packet.pointer)), packet);
         }
 
-        c.igPushID_Int(@intCast(i));
-        defer c.igPopID();
-
-        if (c.igColorButton(
-            "Updated?",
-            c.ImVec4{
-                .x = 0.1,
-                .y = 0.9 * updatesDecay[i],
-                .z = 0.05,
-                .w = updatesDecay[i],
-            },
-            0,
-            c.ImVec2{ .x = c.igGetFrameHeight(), .y = c.igGetFrameHeight() },
-        )) {
-            packet.queued = true;
-        }
-        c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
-
-        displayValue(packetType.type, packetType.name, "", @ptrCast(@alignCast(packet.pointer)), packet);
+        c.igEnd();
     }
-
-    c.igEnd();
 }
 
 pub const PlotData = struct {
@@ -460,6 +654,7 @@ pub const PlotData = struct {
     name: [*c]const u8,
     offset: i32 = 0,
     data: std.ArrayList(DataStruct) = undefined,
+    color: c.ImVec4,
 
     pub fn initData(self: *Self, allocator: std.mem.Allocator, timestamp: f64) void {
         self.data = std.ArrayList(DataStruct).initCapacity(allocator, max_len) catch unreachable;
@@ -475,7 +670,7 @@ pub const PlotData = struct {
         if (self.updated.*) {
             self.get_value(-1).value = self.pointer.get_float();
 
-            stdout.print("{}, {}\n", .{ timestamp, self.pointer.get_float() }) catch unreachable;
+            // stdout.print("{}, {}\n", .{ timestamp, self.pointer.get_float() }) catch unreachable;
 
             if (length < max_len) {
                 self.data.append(DataStruct{ .value = self.pointer.get_float(), .time = timestamp }) catch unreachable;
@@ -486,6 +681,10 @@ pub const PlotData = struct {
         }
     }
 
+    pub fn delete(self: *Self) void {
+        self.data.deinit();
+    }
+
     pub fn get_value(self: *Self, index: i32) *DataStruct {
         const length = self.data.items.len;
         return &self.data.items[@intCast(@mod((self.offset + index), @as(i32, @intCast(length))))];
@@ -493,18 +692,18 @@ pub const PlotData = struct {
 };
 
 pub const PlotValue = union(enum) {
-    f64: *f64,
-    f32: *f32,
-    u8: *u8,
-    i8: *i8,
-    u16: *u16,
-    i16: *i16,
-    u32: *u32,
-    i32: *i32,
-    u64: *u64,
-    i64: *i64,
-    c_int: *c_int,
-    bool: *bool,
+    f64: *align(1) f64,
+    f32: *align(1) f32,
+    u8: *align(1) u8,
+    i8: *align(1) i8,
+    u16: *align(1) u16,
+    i16: *align(1) i16,
+    u32: *align(1) u32,
+    i32: *align(1) i32,
+    u64: *align(1) u64,
+    i64: *align(1) i64,
+    c_int: *align(1) c_int,
+    bool: *align(1) bool,
 
     pub fn get_float(self: PlotValue) f64 {
         return switch (self) {
@@ -574,16 +773,42 @@ pub const Plot = struct {
 
                 if (c.ImPlot_BeginDragDropTargetPlot()) {
                     if (c.igAcceptDragDropPayload("f32", c.ImGuiDragDropFlags_None)) |payload| {
-                        self.data_pointers.append(@as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
-                        self.data_pointers.items[self.data_pointers.items.len - 1].initData(self.allocator, current_time);
+                        var created = false;
+                        for (self.data_pointers.items) |*data| {
+                            if (data.name == @as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).name) {
+                                created = true;
+                            }
+                        }
+                        for (self.data_pointers2.items) |*data| {
+                            if (data.name == @as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).name) {
+                                created = true;
+                            }
+                        }
+                        if (!created) {
+                            self.data_pointers.append(@as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
+                            self.data_pointers.items[self.data_pointers.items.len - 1].initData(self.allocator, current_time);
+                        }
                     }
                     c.ImPlot_EndDragDropTarget();
                 }
 
                 if (c.ImPlot_BeginDragDropTargetAxis(c.ImAxis_Y2)) {
                     if (c.igAcceptDragDropPayload("f32", c.ImGuiDragDropFlags_None)) |payload| {
-                        self.data_pointers2.append(@as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
-                        self.data_pointers2.items[self.data_pointers2.items.len - 1].initData(self.allocator, current_time);
+                        var created = false;
+                        for (self.data_pointers2.items) |*data| {
+                            if (data.name == @as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).name) {
+                                created = true;
+                            }
+                        }
+                        for (self.data_pointers.items) |*data| {
+                            if (data.name == @as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).name) {
+                                created = true;
+                            }
+                        }
+                        if (!created) {
+                            self.data_pointers2.append(@as(*PlotData, @ptrCast(@alignCast(payload.*.Data))).*) catch unreachable;
+                            self.data_pointers2.items[self.data_pointers2.items.len - 1].initData(self.allocator, current_time);
+                        }
                     }
                     c.ImPlot_EndDragDropTarget();
                 }
@@ -592,7 +817,7 @@ pub const Plot = struct {
                 //     std.debug.print("{},", .{current_time});
                 // }
 
-                for (self.data_pointers.items) |*data| {
+                for (self.data_pointers.items, 0..) |*data, i| {
                     if (c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1].Range.Max >= current_time) {
                         data.update(current_time);
                     }
@@ -606,10 +831,23 @@ pub const Plot = struct {
                         data.offset,
                         @intCast(@sizeOf(f64) * 2),
                     );
+                    if (c.ImPlot_IsLegendEntryHovered(data.name) and c.igGetIO().*.MouseDown[1]) {
+                        c.igOpenPopup_Str(data.name, c.ImGuiPopupFlags_None);
+                    }
+                    if (c.igBeginPopup(data.name, c.ImGuiPopupFlags_None)) {
+                        if (c.igMenuItem_Bool("REMOVE", null, false, true)) {
+                            data.delete();
+                            _ = self.data_pointers.orderedRemove(i);
+                            c.igEndPopup();
+                            break; //FIXME THIS IS FUCKED NEED TO CLEANLY HANDLE DELETING FROM LOOP
+                        }
+                        _ = c.igColorPicker3("color", @ptrCast(&data.color), 0);
+                        c.igEndPopup();
+                    }
                 }
 
                 c.ImPlot_SetAxes(c.ImAxis_X1, c.ImAxis_Y2);
-                for (self.data_pointers2.items) |*data| {
+                for (self.data_pointers2.items, 0..) |*data, i| {
                     if (c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1].Range.Max >= current_time) {
                         data.update(current_time);
                     }
@@ -623,11 +861,22 @@ pub const Plot = struct {
                         data.offset,
                         @intCast(@sizeOf(f64) * 2),
                     );
-                }
 
-                // if (self.data_pointers.items.len > 0) {
-                //     std.debug.print("\n", .{});
-                // }
+                    if (c.ImPlot_IsLegendEntryHovered(data.name) and c.igGetIO().*.MouseDown[1]) {
+                        c.igOpenPopup_Str(data.name, c.ImGuiPopupFlags_None);
+                    }
+                    if (c.igBeginPopup(data.name, c.ImGuiPopupFlags_None)) {
+                        // var col: [4]f32 = undefined;
+                        if (c.igMenuItem_Bool("REMOVE", null, false, true)) {
+                            data.delete();
+                            _ = self.data_pointers2.orderedRemove(i);
+                            c.igEndPopup();
+                            break;
+                        }
+                        _ = c.igColorPicker3("color", @ptrCast(&data.color), 0);
+                        c.igEndPopup();
+                    }
+                }
 
                 c.ImPlot_EndPlot();
 

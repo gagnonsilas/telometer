@@ -13,21 +13,29 @@ pub const Data = extern struct {
     received: bool,
 };
 
-pub const Header = telometer.TelometerHeader;
+fn packedSize(comptime T: type) usize {
+    return @divExact(@bitSizeOf(T), 8);
+}
 
-pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, comptime InstanceStruct: type) type {
+pub const Header = telometer.TelometerHeader;
+const TelometerError = error{
+    UnknownId,
+};
+
+pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type, comptime IdMap: [@typeInfo(InstanceStruct).@"struct".fields.len]u32) type {
     return struct {
         const Self = @This();
-        const count: usize = @typeInfo(PacketStruct).@"struct".fields.len;
+        pub const Struct = InstanceStruct;
+        pub const count: usize = @typeInfo(InstanceStruct).@"struct".fields.len;
         const log_header: log.Header = log.Header.init(12, InstanceStruct, 1, 0);
         pub const Logger = log.Log(InstanceStruct);
         backend: Backend,
         next_packet: u16 = 0,
         data: *InstanceStruct,
-        packet_struct: []Data,
+        packet_struct: [count]Data,
         log: Logger,
 
-        pub fn init(allocator: std.mem.Allocator, backend: Backend, packet_struct: *PacketStruct) !Self {
+        pub fn init(allocator: std.mem.Allocator, backend: Backend) !Self {
             var self: Self = .{
                 .backend = backend,
                 // .packet_struct = &packet_struct,
@@ -36,12 +44,20 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
                 .log = undefined,
             };
 
-            inline for (@typeInfo(PacketStruct).@"struct".fields) |packet| {
-                @field(packet_struct, packet.name).pointer = @ptrCast(&(@field(self.data.*, packet.name)));
+            inline for (@typeInfo(InstanceStruct).@"struct".fields, &self.packet_struct) |field, *data| {
+                data.pointer = @ptrCast(&(@field(self.data.*, field.name)));
+                data.size = @sizeOf(field.type);
+                data.queued = false;
+                data.locked = false;
+                data.received = false;
             }
 
             self.log = try log.Log(InstanceStruct).init(log_header, self.data);
-            self.packet_struct = std.mem.bytesAsSlice(Data, std.mem.asBytes(packet_struct));
+            // for (self.packet_struct) |*data| {
+            //     data.pointer = @ptrCast(&(@field(self.data.*, packet.name)));
+            // }
+
+            // self.packet_struct);
 
             return self;
         }
@@ -50,8 +66,17 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
             self.log.endLog() catch unreachable;
         }
 
+        pub fn mapId(id: u32) !u16 {
+            for (IdMap, 0..) |mapped_id, i| {
+                if (mapped_id == id) {
+                    return @intCast(i);
+                }
+            }
+            return TelometerError.UnknownId;
+        }
+
         pub fn update(self: *Self) void {
-            for (self.packet_struct) |*packet| {
+            for (&self.packet_struct) |*packet| {
                 packet.received = false;
             }
 
@@ -64,7 +89,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
                     continue;
                 }
 
-                if (!self.backend.writePacket(.{ .id = current_id }, packet.*)) {
+                if (!self.backend.writePacket(.{ .id = IdMap[current_id] }, packet.*)) {
                     self.next_packet = current_id;
                     break;
                 }
@@ -75,12 +100,17 @@ pub fn TelometerInstance(comptime Backend: type, comptime PacketStruct: type, co
             }
 
             while (self.backend.getNextHeader()) |header| {
-                if (header.id >= count) {
-                    std.log.err("Invalid header", .{});
-                    continue;
-                }
+                // if (header.id >= count) {
+                //     std.log.err("Invalid header", .{});
+                //     continue;
+                // }
 
-                var packet = &self.packet_struct[header.id];
+                const index: u16 = mapId(header.id) catch |e| {
+                    std.debug.print("ERROR: {} - id = 0x{x}\n", .{ e, header.id });
+                    continue;
+                };
+
+                var packet = &self.packet_struct[index];
 
                 if (packet.locked) {
                     self.backend.read(null, packet.size) catch |e| {

@@ -136,7 +136,7 @@ pub fn Log(comptime PacketsStruct: type) type {
         }
 
         pub fn logPacket(self: *Self, header: tm.Header, data: tm.Data) !void {
-            const pos = try self.file.getPos();
+            // const pos = try self.file.getPos();
 
             if (self.writer.end != 0) {
                 try self.writer.flush();
@@ -144,17 +144,17 @@ pub fn Log(comptime PacketsStruct: type) type {
 
             const now = std.time.microTimestamp();
 
-            std.debug.print("what the fuck? {} \n", .{self.header.end_time});
+            // std.debug.print("what the fuck? {} \n", .{self.header.end_time});
             self.header.end_time = now;
             try self.writer.writer().writeInt(i64, now, std.builtin.Endian.little);
             try self.writer.writer().writeStruct(header);
             try self.writer.writer().writeAll(@as([*]u8, @ptrCast(data.pointer))[0..data.size]);
 
-            const overflow: i32 = @as(i32, @intCast(((pos % self.header.block_size) + self.writer.end))) - @as(i32, @intCast(self.header.block_size));
+            // const overflow: i32 = @as(i32, @intCast(((pos % self.header.block_size) + self.writer.end))) - @as(i32, @intCast(self.header.block_size));
 
-            if (overflow >= 0) {
-                try self.writeBlockHeader((pos / self.header.block_size) + 1, @intCast(overflow));
-            }
+            // if (overflow >= 0) {
+            //     try self.writeBlockHeader((pos / self.header.block_size) + 1, @intCast(overflow));
+            // }
 
             try self.writer.flush();
         }
