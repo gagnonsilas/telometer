@@ -1,4 +1,5 @@
 const std = @import("std");
+pub const fsae = @import("fsae.zig");
 pub const c = @cImport({
     @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", {});
     @cInclude("cimgui.h");
@@ -7,7 +8,7 @@ pub const c = @cImport({
     @cInclude("glad/glad.h");
     @cInclude("SDL2/SDL.h");
 });
-
+//:)
 const mat = @import("mat.zig");
 const math = std.math;
 
@@ -26,9 +27,26 @@ fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error {}: {s}\n", .{ err, desc });
 }
 
+const ids = [_]u32{
+    0x0,
+    0x300,
+    0x707,
+    0x301,
+    (0x1918FF71 | 1 << 31),
+    0x708,
+    0x709,
+    (0x19107171 | 1 << 31),
+    (0x1928FF71 | 1 << 31),
+    0x704,
+    0x401,
+    0x002,
+    ((0b111 << 8) | 0xC),
+    ((0b111 << 8) | 0xD),
+    (0x191AFF71 | 1 << 31),
+};
 var backend: Backend = undefined;
-var packets: telemetry.TelemetryPackets = undefined;
-const TelometerInstance = tm.TelometerInstance(Backend, telemetry.TelemetryPackets, telemetry.TelemetryTypes);
+const TelometerInstance = tm.TelometerInstance(Backend, fsae.TelometerTypes, fsae.TelometerTypes.IDs);
+// const TelometerInstance = tm.TelometerInstance(Backend, fsae.TelometerTypes, fsae.TelometerTypes.IDs); :)
 var instance: TelometerInstance = undefined;
 
 var plot: dash.Plot = undefined;
@@ -42,7 +60,7 @@ pub fn main() !void {
         if (deinit_status == .leak) @panic("TEST FAIL");
     }
 
-    packets = telemetry.initTelemetryPackets();
+    // packets = telemetry.initTelemetryPackets();
     backend = Backend.init();
 
     // const logger = try log.Log(telemetry.TelemetryTypes).init(
@@ -53,16 +71,17 @@ pub fn main() !void {
     instance = try TelometerInstance.init(
         std.heap.c_allocator,
         backend,
-        &packets,
     );
     defer instance.close();
 
-    var log_interface = dash.LogInterface(TelometerInstance.Logger).init(&instance.log);
+    // var log_interface = dash.LogInterface(TelometerInstance.Logger).init(&instance.log);
 
     var dashboard = dash.Dashboard.init() catch |e| return e;
     defer dashboard.end();
 
-    dash.theme_fluent();
+    dash.theme_moonlight();
+    // dash.source_engine_theme();
+    // dash.theme_fluent();
 
     plot = dash.Plot.init(allocator);
     defer plot.cleanup();
@@ -87,19 +106,39 @@ pub fn main() !void {
         }
 
         dashboard.init_frame();
+        // if (c.igBeginPopupContextItem("test", c.ImGuiPopupFlags_MouseButtonRight)) {
+        //     std.debug.print("WOOOO!3 ", .{});
+        //     if (c.igMenuItem_Bool("test", null, true, true)) {
+        //         std.debug.print("WOOOO!4 ", .{});
+        //     }
+        //     c.igEndPopup();
+        // }
 
         if (c.igBegin("Yippee!", null, 0)) {
             if (c.igButton("Hi Silas!", .{})) {
                 running = false;
             }
-            // _ = c.igInputText("File:", out_path, 0, 0, 0, 0);A
+            // if (c.igBeginPopupContextItem("test", c.ImGuiPopupFlags_MouseButtonRight)) {
+            //     std.debug.print("WOOOO!3 ", .{});
+            // }
+            // // _ = c.igInputText("File:", out_path, 0, 0, 0, 0);A
+            // if (c.igButton("Hi Silas! 2", .{})) {
+            //     // running = false;
+            //     c.igOpenPopup_Str("hi??", c.ImGuiPopupFlags_None);
+            // }
+            // if (c.igBeginPopup("hi??", c.ImGuiPopupFlags_None)) {
+            //     // std.debug.print("WOOOO!2 ", .{});
+            //     if (c.igMenuItem_Bool("test", null, true, true)) {
+            //         std.debug.print("WOOOO!4 \n", .{});
+            //     }
+            //     c.igEndPopup();
+            // }
         }
-
         c.igEnd();
 
         instance.update();
-        log_interface.update();
-        dash.list(instance);
+        // log_interface.update();
+        dash.list(TelometerInstance, &instance);
         plot.update();
 
         dashboard.render(clear_color);
