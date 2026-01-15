@@ -42,5 +42,5 @@ typedef struct TelometerData {
 } TelometerData;
 
 typedef struct TelometerHeader {
-  uint32_t id;
+  uint16_t id;
 } TelometerHeader;

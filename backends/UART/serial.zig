@@ -2,6 +2,15 @@ const std = @import("std");
 const posix = std.posix;
 const zig_serial = @import("serial");
 
+pub const c = @cImport({
+    @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", {});
+    @cInclude("cimgui.h");
+    @cInclude("cimgui_impl.h");
+    @cInclude("cimplot.h");
+    @cInclude("glad/glad.h");
+    @cInclude("SDL2/SDL.h");
+});
+
 const tm = @import("telometer");
 
 const ALIGNMENT: u8 = 0xAA;
@@ -12,6 +21,7 @@ const SerialBackend: type = struct {
     const Self = @This();
 
     serial: std.fs.File,
+    connected: bool,
 
     pub fn init() Self {
         var self: Self = .{};
@@ -52,10 +62,43 @@ const SerialBackend: type = struct {
         });
 
         std.debug.print("serial openn\n", .{});
+        self.connected = true;
     }
 
     pub fn update(self: *Self) void {
-        _ = self;
+        if (c.igBegin("Serial Interface", null, 0)) {
+            // const cstring: [18]u8 =;
+            _ = c.igColorButton(
+                "Connected",
+
+                c.ImVec4{
+                    .x = 0.1,
+                    .y = 0.9 * @as(f32, @floatFromInt(@intFromBool(self.connected))),
+                    .z = 0.05,
+                    .w = 1,
+                    // .w = @as(f32, @floatCast(self.connected)),
+                },
+                0,
+                .{},
+            );
+            c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+            if (c.igButton("Connect", .{})) {
+                self.openSerial("/dev/ttyACM0") catch |e| {
+                    std.debug.print("error trying to open can socket {}\n", .{e});
+                };
+            }
+            // c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+            // c.igPushItemWidth(c.igGetStyle().*.ite.x)
+
+            // if (c.igCombo_Str("Interface", &interface, "/dev/ttyUSB0\x00/dev/ttyACM0\x00/dev/ttyACM1", 3)) {}
+
+            if (c.igButton("Disconnect", .{})) {
+                self.end();
+            }
+
+            // if (c.igBegin)
+        }
+        c.igEnd();
     }
 
     pub fn writePacket(self: *Self, header: tm.Header, data: tm.Data) bool {
@@ -109,5 +152,6 @@ const SerialBackend: type = struct {
 
     pub fn end(self: Self) void {
         self.serial.close();
+        self.connected = false;
     }
 };

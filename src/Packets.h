@@ -4,83 +4,11 @@
 
 #include <stdbool.h>
 #define PACKETS(P, N)                                                          \
-  P(N, CarHeartBeat, MsgCarHeartbeat)                                          \
-  P(N, Throttle, ThrottlePacket)                                               \
-
-  // P(N, Pedal, PedalInfo)                                                       \
-  // P(N, Brake, BrakePacket)                                                     \
-  // P(N, inverterHS1, MsgInverterHS1TorqueFeedback)                              \
-  // P(N, PedalCounts, CountsInfo)                                                \
-  // P(N, BrakeCounts, BrakeCountsInfo)                                           \
-  // P(N, inverterHC1, MsgInverterHC1Demands)                                     \
-  // P(N, inverterHD1, MsgInverterHD1DebugCurrents)                               \
-  // P(N, Voltage, MsgVoltageResponse)                                            \
-  // P(N, MinMax, MsgCarVoltageDistribution)                                      \
-  // P(N, AMS, TelemPacket)                                                       \
-  // P(N, SusTravel, SusTravelCountsInfo)                                         \
-  // P(N, Wheelspeed, WheelSpeedMeasurement)                                      \
-  // P(N, inverterHS3, MsgInverterHS3TemperatureFeedback)
-
-typedef struct __attribute__((__packed__)) MsgWheelSpeedMeasurement {
-  uint8_t wheel_id;
-  int32_t electrical_milliradians_second;
-} WheelSpeedMeasurement;
-
-typedef struct __attribute__((__packed__)) ThrottlePacket {
-  uint32_t throttle;
-  uint8_t flags;
-} ThrottlePacket;
-
-typedef struct Brake {
-  uint32_t brake1;
-  uint32_t brake2;
-} BrakePacket;
-
-typedef struct testPacket {
-  uint8_t data[8];
-} testPacket;
-
-typedef struct TelemPacket {
-  uint16_t data[4];
-} TelemPacket;
-
-typedef struct __attribute__((__packed__)) MsgInverterHS1TorqueFeedback {
-  int16_t torqueMeasured;
-  int16_t speedMeasured;
-  int16_t dcLinkCurrent;
-  uint8_t checksum;
-  uint8_t seqCounter;
-} MsgInverterHS1TorqueFeedback;
-
-// typedef uint8_t bool;
-
-typedef struct __attribute__((__packed__)) PedalInfo {
-  int16_t pct_one;
-  int16_t pct_two;
-  bool limit_sw;
-  uint8_t faults;
-  uint16_t output;
-} PedalInfo;
-
-typedef struct __attribute__((__packed__)) PedalFaultInfo {
-  uint16_t value;
-  uint16_t a;
-  uint16_t b;
-  uint8_t flags;
-  uint8_t pedal;
-} PedalFaultInfo;
-
-typedef struct __attribute__((__packed__)) CountsInfo {
-  uint16_t counts1;
-  uint16_t counts2;
-  uint16_t zero1;
-  uint16_t zero2;
-} CountsInfo;
-
-typedef struct newStruct {
-  float bob;
-  uint32_t color;
-} newStruct;
+  P(N, enabled, bool)                                                     \
+  P(N, PWM, bool)                                                        \
+  P(N, PWM_Hz, float)                                                         \
+  P(N, accel, vec3f)                                                         \
+  P(N, gyro, vec3f)
 
 typedef struct __attribute__((__packed__)) BrakeCountsInfo {
   uint16_t counts_one;
@@ -142,6 +70,13 @@ typedef struct __attribute__((__packed__)) MsgCarVoltageDistribution {
   uint16_t current;
 } MsgCarVoltageDistribution;
 
+typedef struct vec2f {
+  float x;
+  float y;
+} vec2f;
+typedef struct vec3f {
+  float x, y, z;
+} vec3f;
 TELOMETER_INSTANCE(Telemetry, PACKETS)
 
 extern struct TelemetryPackets packets;

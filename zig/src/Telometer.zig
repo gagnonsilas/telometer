@@ -21,7 +21,7 @@ pub const Header = telometer.TelometerHeader;
 const TelometerError = error{
     UnknownId,
 };
-
+// :)
 pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type, comptime IdMap: [@typeInfo(InstanceStruct).@"struct".fields.len]u32) type {
     return struct {
         const Self = @This();
@@ -89,11 +89,11 @@ pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type, 
                     continue;
                 }
 
-                if (!self.backend.writePacket(.{ .id = IdMap[current_id] }, packet.*)) {
+                if (!self.backend.writePacket(.{ .id = std.math.lossyCast(u16, IdMap[current_id]) }, packet.*)) {
                     self.next_packet = current_id;
                     break;
                 }
-                self.log.logPacket(.{ .id = current_id }, packet.*) catch unreachable;
+                // self.log.logPacket(.{ .id = current_id }, packet.*, self.backend.timestamp()) catch unreachable;
 
                 packet.queued = false;
                 packet.locked = false;
@@ -116,6 +116,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type, 
                     self.backend.read(null, packet.size) catch |e| {
                         std.debug.print("mega error?? {}\n", .{e});
                     };
+                    std.debug.print("oopsadasizes\n", .{});
                     continue;
                 }
 
@@ -123,7 +124,7 @@ pub fn TelometerInstance(comptime Backend: type, comptime InstanceStruct: type, 
                     std.debug.print("Error?? {}\n", .{e});
                 };
 
-                self.log.logPacket(header, packet.*) catch unreachable;
+                // self.log.logPacket(header, packet.*) catch unreachable;
 
                 packet.received = true;
             }

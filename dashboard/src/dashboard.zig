@@ -553,10 +553,16 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
             if (displayInt("##" ++ name, @ptrCast(data), @TypeOf(@intFromEnum(data.*)))) packet.queued = true;
         },
         .int => {
-            if (displayInt("##" ++ name, data, ValueType)) packet.queued = true;
+            if (displayInt("##" ++ name, data, ValueType)) {
+                packet.queued = true;
+                packet.locked = true;
+            }
         },
         .float => {
-            if (displayFloat("##" ++ name, data, ValueType)) packet.queued = true;
+            if (displayFloat("##" ++ name, data, ValueType)) {
+                packet.queued = true;
+                packet.locked = true;
+            }
         },
         .bool => {
             const ptr: *bool = @ptrCast(@alignCast(data));
@@ -574,6 +580,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
             )) {
                 ptr.* = !ptr.*;
                 packet.queued = true;
+                packet.locked = true;
             }
         },
         else => {

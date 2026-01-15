@@ -135,8 +135,9 @@ pub fn Log(comptime PacketsStruct: type) type {
             return self;
         }
 
-        pub fn logPacket(self: *Self, header: tm.Header, data: tm.Data) !void {
+        pub fn logPacket(self: *Self, header: tm.Header, data: tm.Data, timestamp: i64) !void {
             // const pos = try self.file.getPos();
+            _ = timestamp;
 
             if (self.writer.end != 0) {
                 try self.writer.flush();

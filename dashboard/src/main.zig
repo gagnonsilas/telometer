@@ -27,25 +27,34 @@ fn glfwErrorCallback(err: c_int, desc: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error {}: {s}\n", .{ err, desc });
 }
 
+// const ids = [_]u32{
+//     0x0,
+//     0x300,
+//     0x707,
+//     0x301,
+//     (0x1918FF71 | 1 << 31),
+//     0x708,
+//     0x709,
+//     (0x19107171 | 1 << 31),
+//     (0x1928FF71 | 1 << 31),
+//     0x704,
+//     0x401,
+//     0x002,
+//     ((0b111 << 8) | 0xC),
+//     ((0b111 << 8) | 0xD),
+//     (0x191AFF71 | 1 << 31),
+// };
+
 const ids = [_]u32{
     0x0,
-    0x300,
-    0x707,
-    0x301,
-    (0x1918FF71 | 1 << 31),
-    0x708,
-    0x709,
-    (0x19107171 | 1 << 31),
-    (0x1928FF71 | 1 << 31),
-    0x704,
-    0x401,
-    0x002,
-    ((0b111 << 8) | 0xC),
-    ((0b111 << 8) | 0xD),
-    (0x191AFF71 | 1 << 31),
+    0x1,
+    0x2,
+    0x3,
+    0x4,
 };
+
 var backend: Backend = undefined;
-const TelometerInstance = tm.TelometerInstance(Backend, fsae.TelometerTypes, fsae.TelometerTypes.IDs);
+const TelometerInstance = tm.TelometerInstance(Backend, telemetry.TelemetryTypes, ids);
 // const TelometerInstance = tm.TelometerInstance(Backend, fsae.TelometerTypes, fsae.TelometerTypes.IDs); :)
 var instance: TelometerInstance = undefined;
 
