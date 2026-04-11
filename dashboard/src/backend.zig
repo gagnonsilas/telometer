@@ -2,14 +2,14 @@ const std = @import("std");
 const posix = std.posix;
 const zig_serial = @import("serial");
 
-pub const c = @cImport({
-    @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", {});
-    @cInclude("cimgui.h");
-    @cInclude("cimgui_impl.h");
-    @cInclude("cimplot.h");
-    @cInclude("glad/glad.h");
-    @cInclude("SDL2/SDL.h");
-});
+// pub const c = @cImport({
+//     @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", {});
+//     @cInclude("cimgui.h");
+//     @cInclude("cimgui_impl.h");
+//     @cInclude("cimplot.h");
+//     @cInclude("glad/glad.h");
+//     @cInclude("SDL2/SDL.h");
+// });
 const tm = @import("telometer");
 pub const c = @cImport({
     @cDefine("CIMGUI_DEFINE_ENUMS_AND_STRUCTS", {});
@@ -26,11 +26,11 @@ pub const Backend = SerialBackend;
 
 const SerialBackend: type = struct {
     const Self = @This();
-    canSocket: posix.socket_t,
-    addr: SockaddrCan,
-    frame: CanFrame,
-    data_start: usize,
-    connected: bool,
+    // canSocket: posix.socket_t,
+    // addr: SockaddrCan,
+    // frame: CanFrame,
+    // data_start: usize,
+    // connected: bool,
 
     serial: std.fs.File,
     connected: bool,
@@ -69,7 +69,7 @@ const SerialBackend: type = struct {
         _ = std.posix.fcntl(self.serial.handle, std.posix.F.SETFL, flags) catch unreachable;
 
         try zig_serial.configureSerialPort(self.serial, zig_serial.SerialConfig{
-            .baud_rate = 9600,
+            .baud_rate = 115200,
             .word_size = .eight,
             .parity = .none,
             .stop_bits = .one,
@@ -98,7 +98,7 @@ const SerialBackend: type = struct {
             );
             c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
             if (c.igButton("Connect", .{})) {
-                self.openSerial("/dev/ttyACM0") catch |e| {
+                self.openSerial("/dev/ttyUSB0") catch |e| {
                     std.debug.print("error trying to open can socket {}\n", .{e});
                 };
             }

@@ -148,6 +148,7 @@ pub fn main() !void {
         instance.update();
         // log_interface.update();
         dash.list(TelometerInstance, &instance);
+        dash.reflow();
         plot.update();
 
         dashboard.render(clear_color);

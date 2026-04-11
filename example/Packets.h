@@ -4,18 +4,32 @@
 
 #include <stdbool.h>
 #define PACKETS(P, N)                                                          \
-  P(N, enabled, bool)                                                          \
-  P(N, state, uint16_t)                                                        \
-  P(N, controlmode, uint16_t)                                                  \
-  P(N, time, double)
+  P(N, temperature, float)                                                     \
+  P(N, loopTime, float)                                                        \
+  P(N, test, uint16_t)                                                         \
+  P(N, test57, float)                                                         \
+  P(N, test3, vec3f)
 
+#define PACKET_TYPES(P, N)                                                     \
+  P(N, uint32_t)                                                               \
+  P(N, int16_t)                                                                \
+  P(N, uint16_t)                                                               \
+  P(N, int32_t)                                                                \
+  P(N, bool)                                                                   \
+  P(N, int8_t)                                                                 \
+  P(N, vec3f)                                                                  \
+  P(N, float)
 
-typedef struct newStruct {
-  float bob;
-  uint32_t color;
-} newStruct;
-
-
-TELOMETER_INSTANCE(Telemetry, PACKETS)
+typedef struct vec2f {
+  float x;
+  float y;
+} vec2f;
+typedef struct vec3f {
+  float x;
+  float y;
+  int z;
+  vec2f vec;
+} vec3f;
+TELOMETER_INSTANCE(Telemetry,PACKETS);
 
 extern struct TelemetryPackets packets;

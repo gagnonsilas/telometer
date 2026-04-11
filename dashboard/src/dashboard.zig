@@ -733,6 +733,29 @@ pub const PlotValue = union(enum) {
     }
 };
 
+var reflow_times = [_]f64{ 0, 3, 7, 11, 16, 20, 25, 30, 35, 39, 45, 54, 60, 66, 72, 79, 85, 93, 100, 107, 114, 123, 132, 141, 150, 158, 168, 175, 181, 187, 192, 202, 212, 207, 218, 225, 230, 237, 244, 250, 255, 259, 263, 266, 269, 272, 277, 283, 289, 295, 298, 301, 303 };
+const reflow_temps = [_]f64{ 25, 35, 48, 57, 67, 76, 85, 92, 97, 101, 107, 111, 115, 118, 120, 123, 126, 129, 132, 135, 138, 142, 147, 153, 160, 168, 180, 188, 196, 204, 211, 223, 233, 228, 240, 245, 248, 248, 247, 242, 235, 225, 216, 207, 198, 188, 172, 149, 123, 101, 92, 83, 78 };
+
+// const reflow_times: []f64 = []f64{ 0, 30, 120, 050, 210, 240 };
+// const reflow_temps: []f64 = []f64{ 77, 200, 300, 361, 455, 183 };
+
+var plot_reflow: bool = false;
+var reflow_start_time: f64 = 0;
+
+pub fn reflow() void {
+    if (c.igBegin("Reflow", null, 0)) {
+        _ = c.igCheckbox("Show Reflow Curve", &plot_reflow);
+        if (c.igButton("Start Reflow", c.ImVec2{ .x = 0, .y = 0 })) {
+            const new_start_time = @as(f64, @floatFromInt(std.time.microTimestamp())) / 1e6;
+            for (reflow_times, 0..) |time, i| {
+                reflow_times[i] = time - reflow_start_time + new_start_time;
+            }
+            reflow_start_time = new_start_time;
+        }
+    }
+    c.igEnd();
+}
+
 pub const Plot = struct {
     const Self = @This();
     paused: bool,
@@ -851,6 +874,18 @@ pub const Plot = struct {
                         _ = c.igColorPicker3("color", @ptrCast(&data.color), 0);
                         c.igEndPopup();
                     }
+                }
+
+                if (plot_reflow) {
+                    c.ImPlot_PlotLine_doublePtrdoublePtr(
+                        "reflow",
+                        &reflow_times,
+                        &reflow_temps,
+                        reflow_times.len,
+                        c.ImPlotFlags_None,
+                        0,
+                        @sizeOf(f64),
+                    );
                 }
 
                 c.ImPlot_SetAxes(c.ImAxis_X1, c.ImAxis_Y2);
