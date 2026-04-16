@@ -764,10 +764,11 @@ pub const Plot = struct {
                 c.ImPlot_SetupAxisLimits(0, current_time - 10, current_time, c.ImPlotCond_Once);
                 c.ImPlot_SetupAxisScale_PlotScale(c.ImAxis_X1, c.ImPlotScale_Time);
 
+                var pout: c.ImPlotRect = undefined;
+                c.ImPlot_GetPlotLimits(&pout, c.ImAxis_X1, c.ImAxis_Y1);
+                const range = pout.X.Max - pout.X.Min;
+
                 if (!self.paused) {
-                    var pout: c.ImPlotRect = undefined;
-                    c.ImPlot_GetPlotLimits(&pout, c.ImAxis_X1, c.ImAxis_Y1);
-                    const range = pout.X.Max - pout.X.Min;
                     c.ImPlotAxis_SetRange_double(&c.ImPlot_GetCurrentPlot().*.Axes[c.ImAxis_X1], current_time - range, current_time);
                 }
 
@@ -831,6 +832,19 @@ pub const Plot = struct {
                         data.offset,
                         @intCast(@sizeOf(f64) * 2),
                     );
+
+                    if (range < 3) {
+                        c.ImPlot_PlotScatter_doublePtrdoublePtr(
+                            data.name,
+                            &data.data.items[0].time,
+                            &data.data.items[0].value,
+                            @intCast(data.data.items.len),
+                            c.ImPlotScatterFlags_None,
+                            data.offset,
+                            @intCast(@sizeOf(f64) * 2),
+                        );
+                    }
+
                     if (c.ImPlot_IsLegendEntryHovered(data.name) and c.igGetIO().*.MouseDown[1]) {
                         c.igOpenPopup_Str(data.name, c.ImGuiPopupFlags_None);
                     }
@@ -861,6 +875,18 @@ pub const Plot = struct {
                         data.offset,
                         @intCast(@sizeOf(f64) * 2),
                     );
+
+                    if (range < 3) {
+                        c.ImPlot_PlotScatter_doublePtrdoublePtr(
+                            data.name,
+                            &data.data.items[0].time,
+                            &data.data.items[0].value,
+                            @intCast(data.data.items.len),
+                            c.ImPlotScatterFlags_None,
+                            data.offset,
+                            @intCast(@sizeOf(f64) * 2),
+                        );
+                    }
 
                     if (c.ImPlot_IsLegendEntryHovered(data.name) and c.igGetIO().*.MouseDown[1]) {
                         c.igOpenPopup_Str(data.name, c.ImGuiPopupFlags_None);
