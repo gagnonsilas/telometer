@@ -1,1 +1,1 @@
-/home/silas/projects/ev25/common/code/src/telometer.zig
+/home/silas/projects/gfr-firmware/common/code/src/telometer.zig

@@ -116,7 +116,7 @@
             dbus.dev
             pkg-config
             # source
-            zig
+            zigPackages."0.14"
             zls
             compiledb
             gtk3

@@ -162,7 +162,7 @@ pub const Dashboard = struct {
             900,
             900,
             c.SDL_WINDOW_OPENGL | c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_ALLOW_HIGHDPI,
-        ) orelse return error.GLFWCreateWindowFailed;
+        ) orelse unreachable;
 
         self.gl_context = c.SDL_GL_CreateContext(self.window);
         if (0 != c.SDL_GL_MakeCurrent(self.window, self.gl_context))
@@ -521,7 +521,7 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
                 c.igPushItemWidth(c.igCalcItemWidth() * 0.8);
 
                 inline for (struct_type.fields) |field| {
-                    displayValue(field.type, field.name, long_name ++ ".", @alignCast(&@field(data.*, field.name)), packet);
+                    displayValue(field.type, field.name, long_name ++ ".", @ptrCast(@alignCast(&@field(data.*, field.name))), packet);
                 }
                 c.igPopItemWidth();
                 c.igTreePop();
@@ -589,6 +589,22 @@ pub fn displayValue(ValueType: type, comptime name: [:0]const u8, comptime paren
             if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
                 drag_drop_payload = PlotData{
                     .pointer = @unionInit(PlotValue, @typeName(ValueType), @ptrCast(@alignCast(data))),
+                    .updated = &packet.received,
+                    .color = undefined,
+                    .name = long_name,
+                };
+                _ = c.igSetDragDropPayload("f32", &drag_drop_payload, @sizeOf(PlotData), c.ImGuiCond_Once);
+                c.igTextUnformatted(long_name, long_name.ptr + long_name.len);
+                c.igEndDragDropSource();
+            }
+        },
+        .@"enum" => {
+            c.igSameLine(0.0, c.igGetStyle().*.ItemInnerSpacing.x);
+            _ = c.igSelectable_Bool(name, false, 0, c.ImVec2{ .x = 0, .y = 0 });
+
+            if (c.igBeginDragDropSource(c.ImGuiDragDropFlags_None)) {
+                drag_drop_payload = PlotData{
+                    .pointer = @unionInit(PlotValue, @typeName(@TypeOf(@intFromEnum(data.*))), @ptrCast(@alignCast(data))),
                     .updated = &packet.received,
                     .color = undefined,
                     .name = long_name,
@@ -704,6 +720,13 @@ pub const PlotValue = union(enum) {
     i64: *align(1) i64,
     c_int: *align(1) c_int,
     bool: *align(1) bool,
+    u1: *align(1) u1,
+    u2: *align(1) u2,
+    u3: *align(1) u3,
+    u4: *align(1) u4,
+    u5: *align(1) u5,
+    u6: *align(1) u6,
+    u7: *align(1) u7,
 
     pub fn get_float(self: PlotValue) f64 {
         return switch (self) {
